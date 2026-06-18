@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Parchis_G3.AccesoDatos.Model;
+namespace Parchis_G3.Dominio.Entidades;
 
 public partial class EstadoFicha
 {
