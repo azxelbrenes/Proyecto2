@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Parchis_G3.Dominio.EntidadesTipadas;
 
-public partial class TurnosPartidum
+public partial class TTurnosPartidum
 {
     public int TurId { get; set; }
 

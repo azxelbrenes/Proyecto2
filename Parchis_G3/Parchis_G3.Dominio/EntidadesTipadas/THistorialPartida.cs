@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Parchis_G3.Dominio.EntidadesTipadas;
 
-public partial class HistorialPartida
+public partial class THistorialPartida
 {
     public int HpId { get; set; }
 

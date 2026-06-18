@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Parchis_G3.Dominio.EntidadesTipadas;
 
-public partial class Sala
+public partial class TSala
 {
     public int SalId { get; set; }
 

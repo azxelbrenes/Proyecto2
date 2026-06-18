@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Parchis_G3.Dominio.EntidadesTipadas;
 
-public partial class Usuario
+public partial class TUsuario
 {
     public int UsuId { get; set; }
 

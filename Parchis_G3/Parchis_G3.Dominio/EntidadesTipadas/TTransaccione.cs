@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Parchis_G3.Dominio.EntidadesTipadas;
 
-public partial class Transaccione
+public partial class TTransaccione
 {
     public int TranId { get; set; }
 

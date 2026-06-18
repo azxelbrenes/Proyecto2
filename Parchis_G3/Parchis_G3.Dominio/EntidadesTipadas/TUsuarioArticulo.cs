@@ -3,15 +3,15 @@ using System.Collections.Generic;
 
 namespace Parchis_G3.Dominio.EntidadesTipadas;
 
-public  class EquipamientoActivo
+public partial class TUsuarioArticulo
 {
-    public int EquId { get; set; }
+    public int UartId { get; set; }
 
     public int UsuId { get; set; }
 
-    public int TipId { get; set; }
-
     public int ArtId { get; set; }
 
-   
+    public DateTime UartFechaCompra { get; set; }
+
+    
 }

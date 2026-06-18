@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Parchis_G3.Dominio.EntidadesTipadas;
 
-public partial class TiposArticulo
+public partial class TTiposArticulo
 {
     public int TipId { get; set; }
 

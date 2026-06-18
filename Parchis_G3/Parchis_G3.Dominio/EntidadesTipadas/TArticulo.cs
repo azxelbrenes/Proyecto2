@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Parchis_G3.Dominio.EntidadesTipadas
 {
-    public class Articulo
+    public class TArticulo
     {
         public int ArtId { get; set; }
 

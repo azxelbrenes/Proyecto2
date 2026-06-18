@@ -1,10 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using AutoMapper;
+using Parchis_G3.Dominio.Entidades;
+using Parchis_G3.Dominio.DTO;
 
 namespace Parchis_G3.Dominio.DTO
 {
-    internal class AutoMapperProfile
+    public class AutoMapperProfile : Profile
     {
+        public AutoMapperProfile()
+        {
+
+        }
     }
 }

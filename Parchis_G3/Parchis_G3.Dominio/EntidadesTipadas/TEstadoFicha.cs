@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Parchis_G3.Dominio.EntidadesTipadas;
 
-public partial class EstadoFicha
+public partial class TEstadoFicha
 {
     public int EfId { get; set; }
 

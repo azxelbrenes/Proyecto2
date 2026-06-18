@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Parchis_G3.Dominio.EntidadesTipadas;
 
-public partial class SesionesActiva
+public partial class TSesionesActiva
 {
     public int SesId { get; set; }
 

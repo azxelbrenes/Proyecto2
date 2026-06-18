@@ -1,4 +1,5 @@
-﻿using Parchis_G3.Dominio.EntidadesTipadas;
+﻿using Parchis_G3.Dominio.Entidades;
+using Parchis_G3.Dominio.EntidadesTipadas;
 
 namespace Parchis_G3.Dominio.InterfacesAD
 {

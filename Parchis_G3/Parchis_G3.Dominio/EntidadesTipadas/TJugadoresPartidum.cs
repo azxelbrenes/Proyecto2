@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Parchis_G3.Dominio.EntidadesTipadas;
 
-public partial class JugadoresPartidum
+public partial class TJugadoresPartidum
 {
     public int JpId { get; set; }
 

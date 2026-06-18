@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Parchis_G3.Dominio.EntidadesTipadas;
 
-public partial class FilaEspera
+public partial class TFilaEspera
 {
     public int FeId { get; set; }
 

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Parchis_G3.Dominio.EntidadesTipadas;
 
-public partial class MensajesChat
+public partial class TMensajesChat
 {
     public int McId { get; set; }
 
