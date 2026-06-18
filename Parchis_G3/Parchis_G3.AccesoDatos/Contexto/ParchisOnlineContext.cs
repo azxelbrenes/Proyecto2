@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
+using Parchis_G3.Dominio.Entidades;
 
 namespace Parchis_G3.AccesoDatos.Model;
 
