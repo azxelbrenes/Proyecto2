@@ -2,8 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace SistemaGestionUniversitaria.Utilidades
-{
+namespace Parchis_G3.Utilitarios;
     public class Respuesta
     {
         public bool blnIndicadorTransaccion { get; set; }
