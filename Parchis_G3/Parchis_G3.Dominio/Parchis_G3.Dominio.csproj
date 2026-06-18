@@ -11,10 +11,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="InterfacesLN\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\Parchis_G3.Utilitarios\Parchis_G3.Utilitarios.csproj" />
   </ItemGroup>
 
