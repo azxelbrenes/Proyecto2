@@ -1,5 +1,6 @@
 <Solution>
   <Project Path="Parchis_G3.AccesoDatos/Parchis_G3.AccesoDatos.csproj" />
+  <Project Path="Parchis_G3.API/Parchis_G3.API.csproj" Id="ba932bd4-d803-4f37-9bda-b52c956b9d6d" />
   <Project Path="Parchis_G3.Dominio/Parchis_G3.Dominio.csproj" />
   <Project Path="Parchis_G3.LogicaNegocios/Parchis_G3.LogicaNegocios.csproj" />
   <Project Path="Parchis_G3.Utilitarios/Parchis_G3.Utilitarios.csproj" />

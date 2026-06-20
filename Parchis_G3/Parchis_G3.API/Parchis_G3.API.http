@@ -1,0 +1,6 @@
+@Parchis_G3.API_HostAddress = http://localhost:5051
+
+GET {{Parchis_G3.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
