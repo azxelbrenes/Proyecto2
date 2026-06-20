@@ -23,7 +23,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Implementaciones\" />
+    <ProjectReference Include="..\Parchis_G3.Dominio\Parchis_G3.Dominio.csproj" />
+    <ProjectReference Include="..\Parchis_G3.Utilitarios\Parchis_G3.Utilitarios.csproj" />
   </ItemGroup>
 
 </Project>
