@@ -131,4 +131,4 @@ namespace Parchis_G3.Utilitarios;
             };
         }
     }
-}
+
