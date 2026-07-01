@@ -4,7 +4,7 @@ using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using Parchis_G3.Dominio.EntidadesTipadas;
 
-namespace Parchis_G3.API.Servicios;
+namespace Parchis_G3.API.Services;
 
 public class JwtService
 {

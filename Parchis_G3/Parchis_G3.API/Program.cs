@@ -7,7 +7,7 @@ using Parchis_G3.AccesoDatos.Model;
 using Parchis_G3.Dominio.InterfacesAD;
 using Parchis_G3.Dominio.InterfacesLN;
 using Parchis_G3.LogicaNegocios.Implementaciones;
-using Parchis_G3.API.Servicios;
+using Parchis_G3.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
