@@ -1,0 +1,7 @@
+{
+  "name": "ParchisOnline_FrontEnd",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular-standalone"
+}
