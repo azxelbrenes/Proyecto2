@@ -10,7 +10,7 @@ export class AuthService {
 
   // URL base de tu API
   // En el celular físico cambiá localhost por tu IP local (ej: 192.168.1.5)
-  private apiUrl = 'http://localhost:7001/api';
+  private apiUrl = 'http://localhost:5051';
 
   constructor(private http: HttpClient) {}
 
