@@ -1,13 +1,141 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>registro</ion-title>
-  </ion-toolbar>
-</ion-header>
+<!-- ================================================================ -->
+<!-- registro.page.html — Pantalla de Registro                        -->
+<!-- ================================================================ -->
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">registro</ion-title>
-    </ion-toolbar>
-  </ion-header>
+<ion-content class="registro-content" [fullscreen]="true">
+
+  <div class="registro-container">
+
+    <!-- ── Header con botón volver ───────────────────────────── -->
+    <div class="header-back">
+      <ion-button fill="clear" class="btn-back" (click)="volverAlLogin()">
+        <ion-icon name="arrow-back-outline" slot="start"></ion-icon>
+        Volver
+      </ion-button>
+    </div>
+
+    <!-- ── Logo y título ─────────────────────────────────────── -->
+    <div class="logo-section">
+      <div class="logo-icon">🎲</div>
+      <h1 class="titulo">Crear Cuenta</h1>
+      <p class="subtitulo">Únete y empezá a jugar</p>
+    </div>
+
+    <!-- ── Formulario ────────────────────────────────────────── -->
+    <div class="form-card">
+
+      <!-- Nombre -->
+      <div class="input-group">
+        <label class="input-label">Nombre completo</label>
+        <ion-item class="input-item" lines="none">
+          <ion-icon name="person-outline" slot="start" class="input-icon"></ion-icon>
+          <ion-input
+            type="text"
+            placeholder="Tu nombre"
+            [(ngModel)]="nombre"
+            class="custom-input">
+          </ion-input>
+        </ion-item>
+      </div>
+
+      <!-- Correo -->
+      <div class="input-group">
+        <label class="input-label">Correo electrónico</label>
+        <ion-item class="input-item" lines="none">
+          <ion-icon name="mail-outline" slot="start" class="input-icon"></ion-icon>
+          <ion-input
+            type="email"
+            placeholder="tucorreo@gmail.com"
+            [(ngModel)]="correo"
+            class="custom-input">
+          </ion-input>
+        </ion-item>
+      </div>
+
+      <!-- Contraseña -->
+      <div class="input-group">
+        <label class="input-label">Contraseña</label>
+        <ion-item class="input-item" lines="none">
+          <ion-icon name="lock-closed-outline" slot="start" class="input-icon"></ion-icon>
+          <ion-input
+            [type]="mostrarPassword ? 'text' : 'password'"
+            placeholder="Mínimo 6 caracteres"
+            [(ngModel)]="password"
+            class="custom-input">
+          </ion-input>
+          <ion-icon
+            [name]="mostrarPassword ? 'eye-off-outline' : 'eye-outline'"
+            slot="end"
+            class="input-icon toggle-pass"
+            (click)="togglePassword()">
+          </ion-icon>
+        </ion-item>
+      </div>
+
+      <!-- Confirmar contraseña -->
+      <div class="input-group">
+        <label class="input-label">Confirmar contraseña</label>
+        <ion-item class="input-item" lines="none">
+          <ion-icon name="shield-checkmark-outline" slot="start" class="input-icon"></ion-icon>
+          <ion-input
+            [type]="mostrarConfirmar ? 'text' : 'password'"
+            placeholder="Repetí tu contraseña"
+            [(ngModel)]="confirmarPassword"
+            class="custom-input">
+          </ion-input>
+          <ion-icon
+            [name]="mostrarConfirmar ? 'eye-off-outline' : 'eye-outline'"
+            slot="end"
+            class="input-icon toggle-pass"
+            (click)="toggleConfirmar()">
+          </ion-icon>
+        </ion-item>
+      </div>
+
+      <!-- Mensaje de error -->
+      <div class="error-msg" *ngIf="errorMsg">
+        <ion-icon name="alert-circle-outline"></ion-icon>
+        {{ errorMsg }}
+      </div>
+
+      <!-- Mensaje de éxito -->
+      <div class="success-msg" *ngIf="exitoMsg">
+        <ion-icon name="checkmark-circle-outline"></ion-icon>
+        {{ exitoMsg }}
+      </div>
+
+      <!-- Monedas de bienvenida -->
+      <div class="bienvenida-badge">
+        <ion-icon name="wallet-outline"></ion-icon>
+        <span>Recibís <strong>5,000 monedas</strong> de bienvenida</span>
+      </div>
+
+      <!-- Botón crear cuenta -->
+      <ion-button
+        expand="block"
+        class="btn-registro"
+        [disabled]="cargando"
+        (click)="crearCuenta()">
+        <ion-spinner *ngIf="cargando" name="crescent"></ion-spinner>
+        <span *ngIf="!cargando">🎲 Crear Cuenta</span>
+      </ion-button>
+
+      <!-- Separador -->
+      <div class="separador">
+        <span>¿Ya tenés cuenta?</span>
+      </div>
+
+      <!-- Botón login -->
+      <ion-button
+        expand="block"
+        fill="outline"
+        class="btn-login"
+        (click)="volverAlLogin()">
+        Iniciar Sesión
+      </ion-button>
+
+    </div>
+
+  </div>
+
 </ion-content>

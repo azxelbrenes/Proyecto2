@@ -1,0 +1,198 @@
+// ================================================================
+// registro.page.scss — Estilos de la pantalla de Registro
+// ================================================================
+
+.registro-content {
+  --background: linear-gradient(135deg, #1C1C2E 0%, #16213E 50%, #0F3460 100%);
+}
+
+.registro-container {
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  min-height:      100vh;
+  padding:         1rem 1.5rem 2rem;
+}
+
+// ── Botón volver ─────────────────────────────────────────────────
+.header-back {
+  width:      100%;
+  max-width:  400px;
+  margin-bottom: 0.5rem;
+
+  .btn-back {
+    --color:  rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+
+    &:hover { --color: #FFC300; }
+  }
+}
+
+// ── Logo ─────────────────────────────────────────────────────────
+.logo-section {
+  text-align:    center;
+  margin-bottom: 1.5rem;
+
+  .logo-icon {
+    font-size:  3.5rem;
+    animation:  bounce 2s infinite;
+  }
+
+  .titulo {
+    font-size:   1.9rem;
+    font-weight: 800;
+    color:       #FFC300;
+    margin:      0.3rem 0 0.2rem;
+    text-shadow: 0 0 20px rgba(255, 195, 0, 0.4);
+  }
+
+  .subtitulo {
+    color:     rgba(255, 255, 255, 0.6);
+    font-size: 0.9rem;
+    margin:    0;
+  }
+}
+
+// ── Card formulario ───────────────────────────────────────────────
+.form-card {
+  width:            100%;
+  max-width:        400px;
+  background:       rgba(255, 255, 255, 0.08);
+  border:           1px solid rgba(255, 255, 255, 0.12);
+  border-radius:    20px;
+  padding:          1.8rem 1.5rem;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter:  blur(10px);
+}
+
+// ── Inputs ───────────────────────────────────────────────────────
+.input-group {
+  margin-bottom: 1rem;
+
+  .input-label {
+    color:         rgba(255, 255, 255, 0.7);
+    font-size:     0.82rem;
+    font-weight:   600;
+    margin-bottom: 0.3rem;
+    display:       block;
+    letter-spacing: 0.5px;
+  }
+
+  .input-item {
+    --background:        rgba(255, 255, 255, 0.1);
+    --border-radius:     12px;
+    --padding-start:     1rem;
+    --inner-padding-end: 1rem;
+    border:              1px solid rgba(255, 255, 255, 0.15);
+    border-radius:       12px;
+
+    &:focus-within {
+      border-color: #1A56DB;
+      box-shadow:   0 0 0 3px rgba(26, 86, 219, 0.2);
+    }
+
+    .input-icon {
+      color:     rgba(255, 255, 255, 0.5);
+      font-size: 1.1rem;
+    }
+
+    .toggle-pass {
+      cursor: pointer;
+      &:hover { color: #FFC300; }
+    }
+  }
+
+  .custom-input {
+    --color:             white;
+    --placeholder-color: rgba(255, 255, 255, 0.35);
+  }
+}
+
+// ── Mensajes ─────────────────────────────────────────────────────
+.error-msg {
+  display:        flex;
+  align-items:    center;
+  gap:            0.4rem;
+  color:          #FF6B6B;
+  font-size:      0.83rem;
+  background:     rgba(255, 107, 107, 0.1);
+  border:         1px solid rgba(255, 107, 107, 0.3);
+  border-radius:  8px;
+  padding:        0.6rem 0.8rem;
+  margin-bottom:  0.8rem;
+}
+
+.success-msg {
+  display:        flex;
+  align-items:    center;
+  gap:            0.4rem;
+  color:          #4CAF50;
+  font-size:      0.83rem;
+  background:     rgba(76, 175, 80, 0.1);
+  border:         1px solid rgba(76, 175, 80, 0.3);
+  border-radius:  8px;
+  padding:        0.6rem 0.8rem;
+  margin-bottom:  0.8rem;
+}
+
+// ── Badge de bienvenida ───────────────────────────────────────────
+.bienvenida-badge {
+  display:        flex;
+  align-items:    center;
+  gap:            0.5rem;
+  color:          #FFC300;
+  font-size:      0.85rem;
+  background:     rgba(255, 195, 0, 0.08);
+  border:         1px solid rgba(255, 195, 0, 0.25);
+  border-radius:  10px;
+  padding:        0.6rem 0.8rem;
+  margin-bottom:  1rem;
+
+  ion-icon { font-size: 1.1rem; }
+
+  strong { font-weight: 700; }
+}
+
+// ── Botones ──────────────────────────────────────────────────────
+.btn-registro {
+  --background:      #FFC300;
+  --color:           #1C1C2E;
+  --border-radius:   12px;
+  --box-shadow:      0 4px 20px rgba(255, 195, 0, 0.3);
+  font-weight:       800;
+  font-size:         1rem;
+  height:            3.2rem;
+  margin-top:        0.3rem;
+}
+
+.separador {
+  text-align: center;
+  color:      rgba(255, 255, 255, 0.4);
+  font-size:  0.83rem;
+  margin:     1rem 0;
+  position:   relative;
+
+  &::before, &::after {
+    content:    '';
+    position:   absolute;
+    top:        50%;
+    width:      35%;
+    height:     1px;
+    background: rgba(255, 255, 255, 0.15);
+  }
+  &::before { left: 0; }
+  &::after  { right: 0; }
+}
+
+.btn-login {
+  --border-radius: 12px;
+  --color:         rgba(255, 255, 255, 0.8);
+  --border-color:  rgba(255, 255, 255, 0.25);
+  font-weight:     600;
+  height:          3rem;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
+}
