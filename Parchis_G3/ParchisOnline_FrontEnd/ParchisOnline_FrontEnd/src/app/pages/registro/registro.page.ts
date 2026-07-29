@@ -1,13 +1,3 @@
-// ================================================================
-// registro.page.ts — Lógica de la pantalla de Registro
-// ================================================================
-// ¿QUÉ HACE ESTE ARCHIVO?
-// Controla el formulario de registro:
-// - Valida todos los campos antes de enviar
-// - Verifica que las contraseñas coincidan
-// - Llama al AuthService para crear la cuenta en la API
-// - Al registrarse redirige al home automáticamente
-// ================================================================
 
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -24,7 +14,7 @@ import {
   alertCircleOutline, checkmarkCircleOutline, walletOutline,
   arrowBackOutline
 } from 'ionicons/icons';
-import { AuthService } from '../../services/auth.service';
+import { AuthService } from '../../../services/auth';
 
 @Component({
   selector:     'app-registro',
