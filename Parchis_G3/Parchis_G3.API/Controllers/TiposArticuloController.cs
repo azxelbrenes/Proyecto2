@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Parchis_G3.API.Servicios;
+using Parchis_G3.API.Services;
 using Parchis_G3.Dominio.EntidadesTipadas;
 using Parchis_G3.Dominio.InterfacesLN;
 
