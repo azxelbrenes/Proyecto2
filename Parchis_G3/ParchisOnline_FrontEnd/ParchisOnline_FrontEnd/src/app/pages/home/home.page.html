@@ -1,13 +1,91 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>home</ion-title>
-  </ion-toolbar>
-</ion-header>
+<!-- ================================================================ -->
+<!-- home.page.html — Dashboard principal / Lobby de salas             -->
+<!-- ================================================================ -->
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">home</ion-title>
-    </ion-toolbar>
-  </ion-header>
+<ion-content class="home-content" [fullscreen]="true">
+
+  <div class="home-container">
+
+    <!-- ── Header con monedas y avatar ───────────────────────── -->
+    <div class="header-bar">
+      <div class="usuario-info">
+        <div class="avatar-circle">🎮</div>
+        <div class="nombre-usuario">{{ usuario?.UsuNombre || 'Jugador' }}</div>
+      </div>
+
+      <div class="monedas-badge">
+        <ion-icon name="logo-bitcoin"></ion-icon>
+        <span>{{ usuario?.UsuMonedasTotal || 0 | number }}</span>
+      </div>
+    </div>
+
+    <!-- ── Título de bienvenida ──────────────────────────────── -->
+    <div class="titulo-section">
+      <h1 class="titulo-juego">PARCHÍS<span class="titulo-online">ONLINE</span></h1>
+      <p class="subtitulo-juego">Elegí tu sala y empezá a jugar</p>
+    </div>
+
+    <!-- ── Estado de carga ────────────────────────────────────── -->
+    <div class="loading-salas" *ngIf="cargando">
+      <ion-spinner name="crescent" color="warning"></ion-spinner>
+      <p>Cargando salas...</p>
+    </div>
+
+    <!-- ── Lista de las 5 salas ──────────────────────────────── -->
+    <div class="salas-grid" *ngIf="!cargando">
+
+      <div
+        class="sala-card"
+        *ngFor="let sala of salas"
+        [class.sala-bloqueada]="usuario?.UsuMonedasTotal < sala.SalCostoEntrada"
+        [ngClass]="getSalaClass(sala.SalNombre)"
+        (click)="unirseASala(sala)">
+
+        <!-- Icono según el tipo de sala -->
+        <div class="sala-icono">{{ getSalaIcono(sala.SalNombre) }}</div>
+
+        <!-- Info de la sala -->
+        <div class="sala-info">
+          <h3 class="sala-nombre">{{ sala.SalNombre }}</h3>
+          <div class="sala-costo">
+            <ion-icon name="logo-bitcoin"></ion-icon>
+            <span>{{ sala.SalCostoEntrada | number }} monedas</span>
+          </div>
+          <div class="sala-premio">
+            Premio: {{ sala.SalPremioBase | number }} 🏆
+          </div>
+        </div>
+
+        <!-- Candado si no tiene monedas suficientes -->
+        <div class="sala-candado" *ngIf="usuario?.UsuMonedasTotal < sala.SalCostoEntrada">
+          <ion-icon name="lock-closed"></ion-icon>
+        </div>
+
+        <!-- Flecha si sí puede entrar -->
+        <div class="sala-flecha" *ngIf="usuario?.UsuMonedasTotal >= sala.SalCostoEntrada">
+          <ion-icon name="chevron-forward"></ion-icon>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- ── Barra de navegación inferior ────────────────────────── -->
+  <div class="navbar-inferior">
+    <div class="nav-item nav-activo">
+      <ion-icon name="home"></ion-icon>
+      <span>Home</span>
+    </div>
+    <div class="nav-item" (click)="irATienda()">
+      <ion-icon name="storefront-outline"></ion-icon>
+      <span>Tienda</span>
+    </div>
+    <div class="nav-item" (click)="irAPerfil()">
+      <ion-icon name="person-outline"></ion-icon>
+      <span>Perfil</span>
+    </div>
+  </div>
+
 </ion-content>

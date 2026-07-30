@@ -1,4 +1,3 @@
-
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
@@ -10,7 +9,7 @@ export class AuthService {
 
   // URL base de tu API
   // En el celular físico cambiá localhost por tu IP local (ej: 192.168.1.5)
-  private apiUrl = 'http://localhost:5051';
+ private apiUrl = 'http://localhost:5051/api';
 
   constructor(private http: HttpClient) {}
 

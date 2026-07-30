@@ -13,7 +13,7 @@ import {
   mailOutline, lockClosedOutline,
   eyeOutline, eyeOffOutline, alertCircleOutline
 } from 'ionicons/icons';
-import { AuthService } from '../../../services/auth';
+import { AuthService } from '../../services/auth';
 
 @Component({
   selector: 'app-login',

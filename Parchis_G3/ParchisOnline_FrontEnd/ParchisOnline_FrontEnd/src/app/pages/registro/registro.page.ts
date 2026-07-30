@@ -14,7 +14,7 @@ import {
   alertCircleOutline, checkmarkCircleOutline, walletOutline,
   arrowBackOutline
 } from 'ionicons/icons';
-import { AuthService } from '../../../services/auth';
+import { AuthService } from '../../services/auth';
 
 @Component({
   selector:     'app-registro',
