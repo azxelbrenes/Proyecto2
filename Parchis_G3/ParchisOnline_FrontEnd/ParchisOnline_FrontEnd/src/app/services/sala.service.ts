@@ -1,11 +1,3 @@
-// ================================================================
-// sala.service.ts — Servicio de Salas de Apuesta
-// ================================================================
-// ¿QUÉ HACE ESTE SERVICIO?
-// Conecta el frontend con los endpoints de SalaController.
-// Trae la lista de salas y maneja el proceso de unirse a una.
-// ================================================================
-
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
