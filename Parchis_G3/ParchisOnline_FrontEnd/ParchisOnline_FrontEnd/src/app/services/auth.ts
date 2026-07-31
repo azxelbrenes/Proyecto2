@@ -32,19 +32,20 @@ export class AuthService {
   // ── registro ─────────────────────────────────────────────────
   // Crea cuenta nueva y guarda el token automáticamente
   registro(nombre: string, correo: string, password: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/auth/registro`, {
-      UsuNombre:       nombre,
-      UsuCorreo:       correo,
-      UsuPasswordHash: password
-    }).pipe(
-      tap((respuesta: any) => {
-        if (respuesta && respuesta.token) {
-          localStorage.setItem('token',   respuesta.token);
-          localStorage.setItem('usuario', JSON.stringify(respuesta.usuario));
-        }
-      })
-    );
-  }
+  return this.http.post(`${this.apiUrl}/auth/registro`, {
+    UsuNombre: nombre,
+    UsuCorreo: correo,
+    UsuPasswordHash: password,
+    UsuEstado: "ACTIVO"
+  }).pipe(
+    tap((respuesta: any) => {
+      if (respuesta && respuesta.token) {
+        localStorage.setItem('token', respuesta.token);
+        localStorage.setItem('usuario', JSON.stringify(respuesta.usuario));
+      }
+    })
+  );
+}
 
   // ── logout ───────────────────────────────────────────────────
   // Limpia el token y datos del usuario
