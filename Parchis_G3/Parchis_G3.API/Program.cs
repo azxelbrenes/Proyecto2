@@ -104,8 +104,18 @@ builder.Services.AddCors(options =>
               .AllowAnyHeader();
     });
 });
+// Configuramos que el JSON mantenga los nombres exactos de C# (PascalCase)
+// en lugar de convertirlos a camelCase automáticamente.
+// Esto es necesario porque el frontend Ionic espera nombres como
+// "SalNombre" y "UsuMonedasTotal" tal cual están en las entidades C#.
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = null;
+    });
 
-builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
