@@ -1,0 +1,107 @@
+<!-- ================================================================ -->
+<!-- tienda.page.html — Pantalla de la Tienda                          -->
+<!-- ================================================================ -->
+
+<ion-content class="tienda-content" [fullscreen]="true">
+
+  <div class="tienda-container">
+
+    <!-- ── Header con monedas ────────────────────────────────── -->
+    <div class="header-bar">
+      <div class="header-titulo">
+        <ion-icon name="storefront" class="titulo-icon"></ion-icon>
+        <span>Tienda</span>
+      </div>
+
+      <div class="monedas-badge">
+        <ion-icon name="logo-bitcoin"></ion-icon>
+        <span>{{ usuario?.UsuMonedasTotal || 0 | number }}</span>
+      </div>
+    </div>
+
+    <!-- ── Tabs de categorías ─────────────────────────────────── -->
+    <div class="tabs-categoria">
+      <div
+        class="tab-item"
+        *ngFor="let tab of categorias"
+        [class.tab-activo]="tipoSeleccionado === tab.id"
+        (click)="cambiarCategoria(tab.id)">
+        <span class="tab-emoji">{{ tab.emoji }}</span>
+        <span class="tab-nombre">{{ tab.nombre }}</span>
+      </div>
+    </div>
+
+    <!-- ── Loading ────────────────────────────────────────────── -->
+    <div class="loading-tienda" *ngIf="cargando">
+      <ion-spinner name="crescent" color="warning"></ion-spinner>
+      <p>Cargando artículos...</p>
+    </div>
+
+    <!-- ── Grid de artículos ──────────────────────────────────── -->
+    <div class="articulos-grid" *ngIf="!cargando && articulos.length > 0">
+
+      <div class="articulo-card" *ngFor="let articulo of articulos">
+
+        <!-- Badge predeterminado -->
+        <div class="badge-predeterminado" *ngIf="articulo.ArtEsPredeterminado">
+          Gratis
+        </div>
+
+        <!-- Icono grande del artículo -->
+        <div class="articulo-icono" [ngClass]="getTipoClass()">
+          {{ getEmojiCategoria() }}
+        </div>
+
+        <!-- Nombre y descripción -->
+        <div class="articulo-nombre">{{ articulo.ArtNombre }}</div>
+        <div class="articulo-desc">{{ articulo.ArtDescripcion }}</div>
+
+        <!-- Precio o botón de comprar -->
+        <ion-button
+          expand="block"
+          class="btn-comprar"
+          [class.btn-gratis]="articulo.ArtPrecio === 0"
+          [disabled]="comprando === articulo.ArtId"
+          (click)="comprar(articulo)">
+
+          <ion-spinner *ngIf="comprando === articulo.ArtId" name="crescent"></ion-spinner>
+
+          <span *ngIf="comprando !== articulo.ArtId && articulo.ArtPrecio > 0">
+            <ion-icon name="logo-bitcoin"></ion-icon>
+            {{ articulo.ArtPrecio | number }}
+          </span>
+
+          <span *ngIf="comprando !== articulo.ArtId && articulo.ArtPrecio === 0">
+            Incluido
+          </span>
+        </ion-button>
+
+      </div>
+
+    </div>
+
+    <!-- ── Estado vacío ───────────────────────────────────────── -->
+    <div class="empty-state" *ngIf="!cargando && articulos.length === 0">
+      <ion-icon name="cube-outline"></ion-icon>
+      <p>No hay artículos en esta categoría todavía.</p>
+    </div>
+
+  </div>
+
+  <!-- ── Barra de navegación inferior ────────────────────────── -->
+  <div class="navbar-inferior">
+    <div class="nav-item nav-activo">
+      <ion-icon name="storefront-outline"></ion-icon>
+      <span>Tienda</span>
+    </div>
+    <div class="nav-item" (click)="irAHome()">
+      <ion-icon name="home"></ion-icon>
+      <span>Home</span>
+    </div>
+    <div class="nav-item" (click)="irAPerfil()">
+      <ion-icon name="person-outline"></ion-icon>
+      <span>Perfil</span>
+    </div>
+  </div>
+
+</ion-content>

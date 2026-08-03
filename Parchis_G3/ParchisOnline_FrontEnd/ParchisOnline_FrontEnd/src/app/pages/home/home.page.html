@@ -1,3 +1,6 @@
+<!-- ================================================================ -->
+<!-- home.page.html — Dashboard estilo carrusel de cartas              -->
+<!-- ================================================================ -->
 
 <ion-content class="home-content" [fullscreen]="true">
 
@@ -19,7 +22,6 @@
     <!-- ── Título de bienvenida ──────────────────────────────── -->
     <div class="titulo-section">
       <h1 class="titulo-juego">PARCHÍS<span class="titulo-online">ONLINE</span></h1>
-      <p class="subtitulo-juego">Elegí tu sala y empezá a jugar</p>
     </div>
 
     <!-- ── Estado de carga ────────────────────────────────────── -->
@@ -28,56 +30,67 @@
       <p>Cargando salas...</p>
     </div>
 
-    <!-- ── Lista de las 5 salas ──────────────────────────────── -->
-    <div class="salas-grid" *ngIf="!cargando">
+    <!-- ── Carrusel de salas estilo cartas ───────────────────── -->
+    <div class="carousel-wrapper" *ngIf="!cargando">
+      <div class="carousel-track">
 
-      <div
-        class="sala-card"
-        *ngFor="let sala of salas"
-        [class.sala-bloqueada]="usuario?.UsuMonedasTotal < sala.SalCostoEntrada"
-        [ngClass]="getSalaClass(sala.SalNombre)"
-        (click)="unirseASala(sala)">
+        <div
+          class="sala-card-grande"
+          *ngFor="let sala of salas"
+          [class.sala-bloqueada]="usuario?.UsuMonedasTotal < sala.SalCostoEntrada"
+          [ngClass]="getSalaClass(sala.SalNombre)"
+          (click)="unirseASala(sala)">
 
-        <!-- Icono según el tipo de sala -->
-        <div class="sala-icono">{{ getSalaIcono(sala.SalNombre) }}</div>
+          <!-- Brillo superior tipo carta -->
+          <div class="card-shine"></div>
 
-        <!-- Info de la sala -->
-        <div class="sala-info">
-          <h3 class="sala-nombre">{{ sala.SalNombre }}</h3>
-          <div class="sala-costo">
+          <!-- Badge de precio arriba a la derecha -->
+          <div class="card-badge-precio">
             <ion-icon name="logo-bitcoin"></ion-icon>
-            <span>{{ sala.SalCostoEntrada | number }} monedas</span>
+            {{ sala.SalCostoEntrada | number }}
           </div>
-          <div class="sala-premio">
-            Premio: {{ sala.SalPremioBase | number }} 🏆
+
+          <!-- Candado si no alcanza -->
+          <div class="card-candado" *ngIf="usuario?.UsuMonedasTotal < sala.SalCostoEntrada">
+            <ion-icon name="lock-closed"></ion-icon>
           </div>
-        </div>
 
-        <!-- Candado si no tiene monedas suficientes -->
-        <div class="sala-candado" *ngIf="usuario?.UsuMonedasTotal < sala.SalCostoEntrada">
-          <ion-icon name="lock-closed"></ion-icon>
-        </div>
+          <!-- Icono/dado grande central -->
+          <div class="card-icono-grande">{{ getSalaIcono(sala.SalNombre) }}</div>
 
-        <!-- Flecha si sí puede entrar -->
-        <div class="sala-flecha" *ngIf="usuario?.UsuMonedasTotal >= sala.SalCostoEntrada">
-          <ion-icon name="chevron-forward"></ion-icon>
+          <!-- Nombre de la sala -->
+          <div class="card-nombre">{{ sala.SalNombre }}</div>
+
+          <!-- Footer con el premio -->
+          <div class="card-premio-footer">
+            <span class="premio-label">PREMIO</span>
+            <div class="premio-valor">
+              <ion-icon name="trophy"></ion-icon>
+              <strong>{{ sala.SalPremioBase | number }}</strong>
+            </div>
+          </div>
+
         </div>
 
       </div>
 
+      <!-- Indicador de scroll (puntos) -->
+      <div class="scroll-dots">
+        <span class="dot" *ngFor="let sala of salas"></span>
+      </div>
     </div>
 
   </div>
 
   <!-- ── Barra de navegación inferior ────────────────────────── -->
   <div class="navbar-inferior">
-    <div class="nav-item nav-activo">
-      <ion-icon name="home"></ion-icon>
-      <span>Home</span>
-    </div>
     <div class="nav-item" (click)="irATienda()">
       <ion-icon name="storefront-outline"></ion-icon>
       <span>Tienda</span>
+    </div>
+    <div class="nav-item nav-activo">
+      <ion-icon name="home"></ion-icon>
+      <span>Home</span>
     </div>
     <div class="nav-item" (click)="irAPerfil()">
       <ion-icon name="person-outline"></ion-icon>

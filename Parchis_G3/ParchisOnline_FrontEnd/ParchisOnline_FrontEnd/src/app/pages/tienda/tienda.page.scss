@@ -1,0 +1,215 @@
+// ================================================================
+// tienda.page.scss — Estilos de la Tienda
+// ================================================================
+
+.tienda-content {
+  --background: radial-gradient(circle at top, #3A2465 0%, #1C1230 45%, #0D0818 100%);
+}
+
+.tienda-container {
+  padding:    1.1rem 1.1rem 6.5rem;
+  min-height: 100vh;
+  max-width:  480px;
+  margin:     0 auto;
+}
+
+// ── Header ───────────────────────────────────────────────────────
+.header-bar {
+  display:         flex;
+  justify-content: space-between;
+  align-items:     center;
+  margin-bottom:   1.1rem;
+  padding:         0.55rem 0.9rem;
+  background:      rgba(255, 255, 255, 0.05);
+  border:          1px solid rgba(255, 255, 255, 0.1);
+  border-radius:   16px;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.header-titulo {
+  display:     flex;
+  align-items: center;
+  gap:         0.5rem;
+  color:       white;
+  font-weight: 800;
+  font-size:   1.15rem;
+
+  .titulo-icon { color: #FFC300; font-size: 1.4rem; }
+}
+
+.monedas-badge {
+  display:        flex;
+  align-items:    center;
+  gap:            0.4rem;
+  background:     linear-gradient(135deg, rgba(255, 195, 0, 0.25), rgba(255, 140, 0, 0.12));
+  border:         1px solid rgba(255, 195, 0, 0.5);
+  border-radius:  20px;
+  padding:        0.4rem 0.95rem;
+
+  ion-icon { color: #FFC300; font-size: 1.15rem; }
+  span     { color: #FFDD55; font-weight: 800; font-size: 0.95rem; }
+}
+
+// ── Tabs de categoría ────────────────────────────────────────────
+.tabs-categoria {
+  display: flex;
+  gap:     0.6rem;
+  margin-bottom: 1.3rem;
+}
+
+.tab-item {
+  flex:            1;
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  gap:             0.25rem;
+  padding:         0.7rem 0.4rem;
+  background:      rgba(255, 255, 255, 0.05);
+  border:          1px solid rgba(255, 255, 255, 0.1);
+  border-radius:   14px;
+  cursor:          pointer;
+  transition:      all 0.15s ease;
+
+  .tab-emoji  { font-size: 1.5rem; }
+  .tab-nombre { color: rgba(255,255,255,0.6); font-size: 0.75rem; font-weight: 700; }
+
+  &.tab-activo {
+    background: linear-gradient(135deg, rgba(255,195,0,0.25), rgba(255,140,0,0.12));
+    border-color: rgba(255, 195, 0, 0.5);
+
+    .tab-nombre { color: #FFDD55; }
+  }
+}
+
+// ── Loading / Empty ──────────────────────────────────────────────
+.loading-tienda, .empty-state {
+  text-align: center;
+  padding:    3rem 1rem;
+  color:      rgba(255, 255, 255, 0.5);
+
+  ion-icon { font-size: 3rem; margin-bottom: 0.6rem; }
+  p        { font-size: 0.9rem; margin-top: 0.8rem; }
+}
+
+// ── Grid de artículos ────────────────────────────────────────────
+.articulos-grid {
+  display:               grid;
+  grid-template-columns: 1fr 1fr;
+  gap:                   0.9rem;
+}
+
+.articulo-card {
+  position:      relative;
+  background:    rgba(255, 255, 255, 0.06);
+  border:        1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  padding:       1.1rem 0.8rem 0.9rem;
+  display:       flex;
+  flex-direction: column;
+  align-items:   center;
+  text-align:    center;
+  box-shadow:    0 6px 16px rgba(0, 0, 0, 0.25);
+
+  .badge-predeterminado {
+    position:      absolute;
+    top:           0.6rem;
+    right:         0.6rem;
+    background:    rgba(76, 175, 80, 0.2);
+    border:        1px solid rgba(76, 175, 80, 0.5);
+    color:         #7ADD82;
+    font-size:     0.62rem;
+    font-weight:   800;
+    padding:       0.15rem 0.5rem;
+    border-radius: 10px;
+    letter-spacing: 0.3px;
+  }
+
+  .articulo-icono {
+    width:           64px;
+    height:          64px;
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    font-size:       2.2rem;
+    border-radius:   16px;
+    margin-bottom:   0.6rem;
+    box-shadow:      inset 0 2px 4px rgba(0,0,0,0.2);
+
+    &.tipo-ficha    { background: radial-gradient(circle at 30% 20%, #FFDE59, #C99A0E); }
+    &.tipo-tablero  { background: radial-gradient(circle at 30% 20%, #7FC4FF, #3A7FD5); }
+    &.tipo-dado     { background: radial-gradient(circle at 30% 20%, #D874EC, #932CAB); }
+  }
+
+  .articulo-nombre {
+    color:       white;
+    font-weight: 800;
+    font-size:   0.88rem;
+    margin-bottom: 0.2rem;
+  }
+
+  .articulo-desc {
+    color:       rgba(255, 255, 255, 0.5);
+    font-size:   0.68rem;
+    line-height: 1.3;
+    margin-bottom: 0.8rem;
+    min-height:  2rem;
+  }
+
+  .btn-comprar {
+    width:            100%;
+    --background:     linear-gradient(135deg, #FFC300, #E0A80E);
+    --color:          #1C1230;
+    --border-radius:  10px;
+    --box-shadow:     0 3px 10px rgba(255, 195, 0, 0.3);
+    font-weight:      800;
+    font-size:        0.8rem;
+    height:           2.4rem;
+    margin:            0;
+
+    ion-icon { font-size: 0.95rem; margin-right: 0.2rem; }
+
+    &.btn-gratis {
+      --background: rgba(255, 255, 255, 0.1);
+      --color:      rgba(255, 255, 255, 0.6);
+      --box-shadow: none;
+    }
+  }
+}
+
+// ── Navbar inferior (mismo estilo del home) ───────────────────────
+.navbar-inferior {
+  position:        fixed;
+  bottom:          0;
+  left:            0;
+  right:           0;
+  display:         flex;
+  justify-content: space-around;
+  align-items:     center;
+  background:      rgba(15, 10, 26, 0.94);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border-top:      1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:      0 -4px 20px rgba(0, 0, 0, 0.35);
+  padding:         0.75rem 0 calc(0.75rem + env(safe-area-inset-bottom));
+  z-index:         10;
+
+  .nav-item {
+    display:        flex;
+    flex-direction: column;
+    align-items:    center;
+    gap:            0.25rem;
+    color:          rgba(255, 255, 255, 0.4);
+    cursor:         pointer;
+    padding:        0.3rem 1.1rem;
+    border-radius:  12px;
+
+    ion-icon { font-size: 1.45rem; }
+    span     { font-size: 0.7rem; font-weight: 700; }
+
+    &.nav-activo {
+      color:      #FFC300;
+      background: rgba(255, 195, 0, 0.12);
+    }
+  }
+}
