@@ -1,12 +1,3 @@
-// ================================================================
-// tienda.page.ts — Lógica de la pantalla de Tienda
-// ================================================================
-// ¿QUÉ HACE ESTE ARCHIVO?
-// - Carga los artículos según la categoría seleccionada (tab)
-// - Permite comprar un artículo llamando a la API
-// - Actualiza el saldo de monedas localmente tras la compra
-// ================================================================
-
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';

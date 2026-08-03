@@ -1,0 +1,275 @@
+.perfil-content {
+  --background: radial-gradient(circle at top, #3A2465 0%, #1C1230 45%, #0D0818 100%);
+}
+
+.perfil-container {
+  padding:    1.1rem 1.1rem 6.5rem;
+  min-height: 100vh;
+  max-width:  480px;
+  margin:     0 auto;
+}
+
+// ── Header ───────────────────────────────────────────────────────
+.header-bar {
+  margin-bottom: 1.1rem;
+  padding:       0.55rem 0.9rem;
+  background:    rgba(255, 255, 255, 0.05);
+  border:        1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+}
+
+.header-titulo {
+  display:     flex;
+  align-items: center;
+  gap:         0.5rem;
+  color:       white;
+  font-weight: 800;
+  font-size:   1.15rem;
+
+  .titulo-icon { color: #FFC300; font-size: 1.4rem; }
+}
+
+// ── Loading ──────────────────────────────────────────────────────
+.loading-perfil {
+  text-align: center;
+  padding:    3rem 0;
+  color:      rgba(255, 255, 255, 0.6);
+  p { margin-top: 0.8rem; font-size: 0.9rem; }
+}
+
+// ── Card del avatar ──────────────────────────────────────────────
+.avatar-card {
+  display:        flex;
+  flex-direction: column;
+  align-items:    center;
+  background:     rgba(255, 255, 255, 0.06);
+  border:         1px solid rgba(255, 255, 255, 0.1);
+  border-radius:  22px;
+  padding:        1.6rem 1.2rem;
+  margin-bottom:  1.3rem;
+  box-shadow:     0 8px 20px rgba(0, 0, 0, 0.25);
+
+  .avatar-grande {
+    width:           88px;
+    height:          88px;
+    border-radius:   50%;
+    background:      linear-gradient(135deg, #4A2E7A, #1C1230);
+    border:          3px solid #FFC300;
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    font-size:       2.6rem;
+    box-shadow:      0 0 20px rgba(255, 195, 0, 0.4);
+    margin-bottom:   0.8rem;
+  }
+
+  .nombre-row {
+    display:     flex;
+    align-items: center;
+    gap:         0.5rem;
+
+    .nombre-usuario {
+      color:       white;
+      font-weight: 900;
+      font-size:   1.3rem;
+      margin:      0;
+    }
+
+    .btn-editar {
+      color:     rgba(255, 255, 255, 0.4);
+      font-size: 1.1rem;
+      cursor:    pointer;
+
+      &:hover { color: #FFC300; }
+    }
+  }
+
+  .nombre-edit-row {
+    display:     flex;
+    align-items: center;
+    gap:         0.5rem;
+    width:       100%;
+
+    .input-nombre {
+      --background:    rgba(255, 255, 255, 0.1);
+      --color:         white;
+      --padding-start: 0.8rem;
+      border:          1px solid rgba(255, 195, 0, 0.5);
+      border-radius:   10px;
+      flex:            1;
+    }
+
+    .btn-guardar { color: #4CAF50; font-size: 1.5rem; cursor: pointer; }
+    .btn-cancelar { color: #FF6B6B; font-size: 1.5rem; cursor: pointer; }
+  }
+
+  .correo-usuario {
+    color:      rgba(255, 255, 255, 0.5);
+    font-size:  0.82rem;
+    margin-top: 0.3rem;
+  }
+
+  .monedas-badge-grande {
+    display:        flex;
+    align-items:    center;
+    gap:            0.4rem;
+    background:     linear-gradient(135deg, rgba(255,195,0,0.22), rgba(255,140,0,0.1));
+    border:         1px solid rgba(255, 195, 0, 0.45);
+    border-radius:  20px;
+    padding:        0.5rem 1.1rem;
+    margin-top:     1rem;
+
+    ion-icon { color: #FFC300; font-size: 1.3rem; }
+    span     { color: #FFDD55; font-weight: 800; font-size: 1.1rem; }
+
+    .monedas-label {
+      color:       rgba(255, 255, 255, 0.5);
+      font-weight: 500;
+      font-size:   0.75rem;
+    }
+  }
+}
+
+// ── Título de sección ────────────────────────────────────────────
+.seccion-titulo {
+  display:        flex;
+  align-items:    center;
+  gap:            0.4rem;
+  color:          rgba(255, 255, 255, 0.7);
+  font-weight:    800;
+  font-size:      0.88rem;
+  margin:         1.2rem 0 0.7rem 0.2rem;
+  letter-spacing: 0.3px;
+
+  ion-icon { color: #FFC300; font-size: 1.1rem; }
+}
+
+// ── Grid de estadísticas ──────────────────────────────────────────
+.stats-grid {
+  display:               grid;
+  grid-template-columns: 1fr 1fr;
+  gap:                   0.7rem;
+}
+
+.stat-card {
+  border-radius: 16px;
+  padding:       1rem 0.6rem;
+  text-align:    center;
+  box-shadow:    0 4px 12px rgba(0, 0, 0, 0.2);
+
+  .stat-numero {
+    font-size:   1.6rem;
+    font-weight: 900;
+    color:       white;
+  }
+
+  .stat-label {
+    font-size:      0.72rem;
+    color:          rgba(255, 255, 255, 0.6);
+    font-weight:    700;
+    letter-spacing: 0.4px;
+    margin-top:     0.15rem;
+  }
+
+  &.stat-jugadas    { background: linear-gradient(150deg, #4A5568, #2D3748); }
+  &.stat-ganadas    { background: linear-gradient(150deg, #38A169, #276749); }
+  &.stat-perdidas   { background: linear-gradient(150deg, #E53E3E, #9B2C2C); }
+  &.stat-porcentaje { background: linear-gradient(150deg, #D69E2E, #975A16); }
+}
+
+// ── Historial de partidas ──────────────────────────────────────────
+.historial-lista {
+  display:        flex;
+  flex-direction: column;
+  gap:            0.5rem;
+}
+
+.historial-item {
+  display:        flex;
+  align-items:    center;
+  gap:            0.8rem;
+  background:     rgba(255, 255, 255, 0.05);
+  border:         1px solid rgba(255, 255, 255, 0.08);
+  border-left:    3px solid rgba(255, 255, 255, 0.2);
+  border-radius:  12px;
+  padding:        0.7rem 0.9rem;
+
+  &.item-victoria  { border-left-color: #4CAF50; }
+  &.item-derrota   { border-left-color: #E53E3E; }
+  &.item-abandono  { border-left-color: #D69E2E; }
+
+  .historial-icono { font-size: 1.3rem; }
+
+  .historial-info {
+    flex: 1;
+
+    .historial-resultado {
+      color:       white;
+      font-weight: 700;
+      font-size:   0.82rem;
+    }
+
+    .historial-fecha {
+      color:     rgba(255, 255, 255, 0.45);
+      font-size: 0.7rem;
+    }
+  }
+
+  .historial-monedas {
+    color:       #FF8A80;
+    font-weight: 800;
+    font-size:   0.85rem;
+
+    &.monedas-positivas { color: #81C784; }
+  }
+}
+
+// ── Botón de logout ──────────────────────────────────────────────
+.btn-logout {
+  --background:      rgba(255, 107, 107, 0.15);
+  --color:           #FF6B6B;
+  --border-radius:   14px;
+  --box-shadow:      none;
+  border:            1px solid rgba(255, 107, 107, 0.35);
+  border-radius:     14px;
+  font-weight:       700;
+  height:            3rem;
+  margin-top:        1.6rem;
+}
+
+// ── Navbar inferior (mismo estilo del home/tienda) ─────────────────
+.navbar-inferior {
+  position:        fixed;
+  bottom:          0;
+  left:            0;
+  right:           0;
+  display:         flex;
+  justify-content: space-around;
+  align-items:     center;
+  background:      rgba(15, 10, 26, 0.94);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border-top:      1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:      0 -4px 20px rgba(0, 0, 0, 0.35);
+  padding:         0.75rem 0 calc(0.75rem + env(safe-area-inset-bottom));
+  z-index:         10;
+
+  .nav-item {
+    display:        flex;
+    flex-direction: column;
+    align-items:    center;
+    gap:            0.25rem;
+    color:          rgba(255, 255, 255, 0.4);
+    cursor:         pointer;
+    padding:        0.3rem 1.1rem;
+    border-radius:  12px;
+
+    ion-icon { font-size: 1.45rem; }
+    span     { font-size: 0.7rem; font-weight: 700; }
+
+    &.nav-activo {
+      color:      #FFC300;
+      background: rgba(255, 195, 0, 0.12);
+    }
+  }
+}

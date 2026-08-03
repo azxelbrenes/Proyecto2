@@ -1,13 +1,137 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>perfil</ion-title>
-  </ion-toolbar>
-</ion-header>
+<ion-content class="perfil-content" [fullscreen]="true">
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">perfil</ion-title>
-    </ion-toolbar>
-  </ion-header>
+  <div class="perfil-container">
+
+    <!-- ── Header ─────────────────────────────────────────────── -->
+    <div class="header-bar">
+      <div class="header-titulo">
+        <ion-icon name="person-circle-outline" class="titulo-icon"></ion-icon>
+        <span>Mi Perfil</span>
+      </div>
+    </div>
+
+    <!-- ── Loading general ────────────────────────────────────── -->
+    <div class="loading-perfil" *ngIf="cargando">
+      <ion-spinner name="crescent" color="warning"></ion-spinner>
+      <p>Cargando perfil...</p>
+    </div>
+
+    <div *ngIf="!cargando">
+
+      <!-- ── Card del avatar y nombre ─────────────────────────── -->
+      <div class="avatar-card">
+        <div class="avatar-grande">🎮</div>
+
+        <!-- Nombre — modo lectura -->
+        <div class="nombre-row" *ngIf="!editando">
+          <h2 class="nombre-usuario">{{ usuario.UsuNombre }}</h2>
+          <ion-icon name="create-outline" class="btn-editar" (click)="activarEdicion()"></ion-icon>
+        </div>
+
+        <!-- Nombre — modo edición -->
+        <div class="nombre-edit-row" *ngIf="editando">
+          <ion-input
+            [(ngModel)]="nombreEditado"
+            class="input-nombre"
+            placeholder="Tu nombre">
+          </ion-input>
+          <ion-icon name="checkmark-circle" class="btn-guardar" (click)="guardarNombre()"></ion-icon>
+          <ion-icon name="close-circle" class="btn-cancelar" (click)="cancelarEdicion()"></ion-icon>
+        </div>
+
+        <div class="correo-usuario">{{ usuario.UsuCorreo }}</div>
+
+        <!-- Badge de monedas -->
+        <div class="monedas-badge-grande">
+          <ion-icon name="logo-bitcoin"></ion-icon>
+          <span>{{ usuario.UsuMonedasTotal | number }}</span>
+          <span class="monedas-label">monedas</span>
+        </div>
+      </div>
+
+      <!-- ── Estadísticas ──────────────────────────────────────── -->
+      <div class="seccion-titulo">
+        <ion-icon name="stats-chart-outline"></ion-icon>
+        Estadísticas
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card stat-jugadas">
+          <div class="stat-numero">{{ estadisticas?.jugadas || 0 }}</div>
+          <div class="stat-label">Jugadas</div>
+        </div>
+        <div class="stat-card stat-ganadas">
+          <div class="stat-numero">{{ estadisticas?.ganadas || 0 }}</div>
+          <div class="stat-label">Ganadas</div>
+        </div>
+        <div class="stat-card stat-perdidas">
+          <div class="stat-numero">{{ estadisticas?.perdidas || 0 }}</div>
+          <div class="stat-label">Perdidas</div>
+        </div>
+        <div class="stat-card stat-porcentaje">
+          <div class="stat-numero">{{ estadisticas?.porcentajeVictoria || 0 }}%</div>
+          <div class="stat-label">Victoria</div>
+        </div>
+      </div>
+
+      <!-- ── Historial de partidas recientes ──────────────────── -->
+      <div class="seccion-titulo" *ngIf="estadisticas?.historial?.length > 0">
+        <ion-icon name="trophy-outline"></ion-icon>
+        Partidas recientes
+      </div>
+
+      <div class="historial-lista" *ngIf="estadisticas?.historial?.length > 0">
+        <div
+          class="historial-item"
+          *ngFor="let partida of estadisticas.historial.slice(0, 5)"
+          [class.item-victoria]="partida.HpResultado === 'VICTORIA'"
+          [class.item-derrota]="partida.HpResultado === 'DERROTA'"
+          [class.item-abandono]="partida.HpResultado === 'ABANDONO'">
+
+          <div class="historial-icono">
+            <span *ngIf="partida.HpResultado === 'VICTORIA'">🏆</span>
+            <span *ngIf="partida.HpResultado === 'DERROTA'">❌</span>
+            <span *ngIf="partida.HpResultado === 'ABANDONO'">🚪</span>
+          </div>
+
+          <div class="historial-info">
+            <div class="historial-resultado">{{ partida.HpResultado }}</div>
+            <div class="historial-fecha">{{ partida.HpFecha | date:'dd/MM/yyyy' }}</div>
+          </div>
+
+          <div class="historial-monedas" [class.monedas-positivas]="partida.HpMonedasGanadas > 0">
+            {{ partida.HpMonedasGanadas > 0 ? '+' : '' }}{{ partida.HpMonedasGanadas | number }}
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Botón de cerrar sesión ────────────────────────────── -->
+      <ion-button
+        expand="block"
+        class="btn-logout"
+        (click)="cerrarSesion()">
+        <ion-icon name="log-out-outline" slot="start"></ion-icon>
+        Cerrar Sesión
+      </ion-button>
+
+    </div>
+
+  </div>
+
+  <!-- ── Barra de navegación inferior ────────────────────────── -->
+  <div class="navbar-inferior">
+    <div class="nav-item" (click)="irATienda()">
+      <ion-icon name="storefront-outline"></ion-icon>
+      <span>Tienda</span>
+    </div>
+    <div class="nav-item" (click)="irAHome()">
+      <ion-icon name="home"></ion-icon>
+      <span>Home</span>
+    </div>
+    <div class="nav-item nav-activo">
+      <ion-icon name="person-outline"></ion-icon>
+      <span>Perfil</span>
+    </div>
+  </div>
+
 </ion-content>

@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿
+using Microsoft.EntityFrameworkCore;
 using Parchis_G3.AccesoDatos.Model;
 using Parchis_G3.Dominio.InterfacesAD;
 using Parchis_G3.Utilitarios;
@@ -24,7 +25,10 @@ public class RepositorioAD<T> : IRepositorioAD<T> where T : class
     {
         try
         {
-            IQueryable<T> query = _dbSet.AsQueryable();
+            // AsNoTracking(): esta consulta es de solo lectura,
+            // no necesitamos que EF la rastree en memoria
+            IQueryable<T> query = _dbSet.AsNoTracking();
+
             if (includes != null)
                 foreach (var inc in includes)
                     query = query.Include(inc);
@@ -42,7 +46,8 @@ public class RepositorioAD<T> : IRepositorioAD<T> where T : class
     {
         try
         {
-            IQueryable<T> query = _dbSet.Where(predicado);
+            IQueryable<T> query = _dbSet.AsNoTracking().Where(predicado);
+
             if (includes != null)
                 foreach (var inc in includes)
                     query = query.Include(inc);
@@ -60,7 +65,11 @@ public class RepositorioAD<T> : IRepositorioAD<T> where T : class
     {
         try
         {
-            IQueryable<T> query = _dbSet.Where(predicado);
+            // Esta es la consulta que causaba el conflicto — ahora
+            // con AsNoTracking() se usa solo para "leer y verificar",
+            // sin quedar enganchada al ChangeTracker de EF.
+            IQueryable<T> query = _dbSet.AsNoTracking().Where(predicado);
+
             if (includes != null)
                 foreach (var inc in includes)
                     query = query.Include(inc);
@@ -94,6 +103,9 @@ public class RepositorioAD<T> : IRepositorioAD<T> where T : class
     {
         try
         {
+            // Como la entidad "existente" ya no viene rastreada
+            // (gracias al AsNoTracking de arriba), Update() puede
+            // rastrear esta entidad nueva sin conflicto.
             _dbSet.Update(entidad);
             return Respuesta<T>.Exito(entidad, "Registro modificado correctamente.");
         }
@@ -107,6 +119,8 @@ public class RepositorioAD<T> : IRepositorioAD<T> where T : class
     {
         try
         {
+            // Igual que Modificar: la entidad llega sin rastrear,
+            // así que Remove() la adjunta directo como "Deleted"
             _dbSet.Remove(entidad);
             return Respuesta<bool>.Exito(true, "Registro eliminado correctamente.");
         }
@@ -120,7 +134,7 @@ public class RepositorioAD<T> : IRepositorioAD<T> where T : class
     {
         try
         {
-            var cantidad = _dbSet.Count(predicado);
+            var cantidad = _dbSet.AsNoTracking().Count(predicado);
             return Respuesta<int>.Exito(cantidad, "Conteo realizado correctamente.");
         }
         catch (Exception ex)
