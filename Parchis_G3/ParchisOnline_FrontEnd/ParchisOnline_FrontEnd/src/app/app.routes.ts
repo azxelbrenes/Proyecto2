@@ -25,5 +25,9 @@ export const routes: Routes = [
   {
     path: 'tienda',
     loadComponent: () => import('./pages/tienda/tienda.page').then( m => m.TiendaPage)
+  },
+  {
+    path: 'perfil',
+    loadComponent: () => import('./pages/perfil/perfil.page').then( m => m.PerfilPage)
   }
 ];
