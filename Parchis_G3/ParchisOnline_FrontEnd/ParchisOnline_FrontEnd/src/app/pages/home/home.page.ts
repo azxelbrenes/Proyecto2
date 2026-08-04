@@ -12,7 +12,7 @@ import {
 } from 'ionicons/icons';
 import { SalaService } from '../../services/sala.service';
 import { AuthService } from '../../services/auth';
- 
+
 @Component({
   selector:    'app-home',
   templateUrl: './home.page.html',
@@ -21,12 +21,12 @@ import { AuthService } from '../../services/auth';
   imports: [CommonModule, IonContent, IonIcon, IonSpinner]
 })
 export class HomePage implements OnInit, ViewWillEnter {
- 
+
   // ── Variables ─────────────────────────────────────────────────
   usuario:  any   = null;   // Datos del usuario autenticado
   salas:    any[] = [];     // Las 5 salas traídas de la API
   cargando: boolean = true; // Spinner mientras carga
- 
+
   constructor(
     private salaService:      SalaService,
     private authService:      AuthService,
@@ -40,38 +40,30 @@ export class HomePage implements OnInit, ViewWillEnter {
       home, storefrontOutline, personOutline
     });
   }
- 
+
   ngOnInit(): void {
     // Se ejecuta UNA sola vez, cuando Ionic crea la página por primera vez
     this.usuario = this.authService.getUsuario();
     this.cargarSalas();
   }
- 
+
   // ── ionViewWillEnter ─────────────────────────────────────────
-  // Se ejecuta CADA VEZ que el usuario vuelve a esta página,
-  // aunque ya haya sido creada antes (Ionic mantiene las páginas
-  // vivas en memoria por rendimiento). Por eso acá volvemos a leer
-  // el localStorage — así si el nombre o las monedas cambiaron en
-  // el perfil o la tienda, el home se actualiza sin necesidad
-  // de refrescar el navegador.
   ionViewWillEnter(): void {
     this.usuario = this.authService.getUsuario();
   }
- 
+
   // ── cargarSalas ──────────────────────────────────────────────
-  // Trae las 5 salas desde la API con sus costos y premios
   cargarSalas(): void {
     this.cargando = true;
- 
+
     this.salaService.listarSalas().subscribe({
       next: (respuesta: any) => {
         this.cargando = false;
-        // La API devuelve { blnIndicadorTransaccion, ValorRetorno }
         this.salas = respuesta.ValorRetorno ?? [];
       },
       error: async (error: any) => {
         this.cargando = false;
- 
+
         const toast = await this.toastController.create({
           message:  'No se pudieron cargar las salas. Verificá tu conexión.',
           duration: 3000,
@@ -82,9 +74,8 @@ export class HomePage implements OnInit, ViewWillEnter {
       }
     });
   }
- 
+
   // ── getSalaIcono ─────────────────────────────────────────────
-  // Retorna el ícono según el nombre de la sala
   getSalaIcono(nombreSala: string): string {
     const iconos: { [key: string]: string } = {
       'Sala Bronce':   '🥉',
@@ -95,9 +86,8 @@ export class HomePage implements OnInit, ViewWillEnter {
     };
     return iconos[nombreSala] ?? '🎲';
   }
- 
+
   // ── getSalaClass ─────────────────────────────────────────────
-  // Retorna la clase CSS según el nombre de la sala para el color
   getSalaClass(nombreSala: string): string {
     const clases: { [key: string]: string } = {
       'Sala Bronce':   'sala-bronce',
@@ -108,7 +98,7 @@ export class HomePage implements OnInit, ViewWillEnter {
     };
     return clases[nombreSala] ?? '';
   }
- 
+
   // ── unirseASala ──────────────────────────────────────────────
   // Verifica el saldo y confirma antes de unirse a la sala
   async unirseASala(sala: any): Promise<void> {
@@ -123,22 +113,20 @@ export class HomePage implements OnInit, ViewWillEnter {
       await toast.present();
       return;
     }
- 
-    // Confirmación antes de descontar monedas
+
+    // Confirmación antes de descontar monedas (con estilo custom)
     const alert = await this.alertController.create({
-      header:  sala.SalNombre,
-      message: `¿Querés unirte por ${sala.SalCostoEntrada} monedas? Premio: ${sala.SalPremioBase} monedas.`,
-      buttons: [
-        { text: 'Cancelar', role: 'cancel' },
-        {
-          text: 'Unirme',
-          handler: () => this.confirmarUnion(sala)
-        }
-      ]
-    });
+  cssClass: 'alert-parchis',
+  header:  sala.SalNombre,
+  message: `¿Querés unirte por ${sala.SalCostoEntrada} monedas?\n\nPremio: ${sala.SalPremioBase} monedas.`,
+  buttons: [
+    { text: 'Cancelar', role: 'cancel', cssClass: 'btn-cancelar' },
+    { text: 'Unirme', cssClass: 'btn-unirme', handler: () => this.confirmarUnion(sala) }
+  ]
+});
     await alert.present();
   }
- 
+
   // ── confirmarUnion ───────────────────────────────────────────
   // Llama a la API para unirse a la sala seleccionada
   private confirmarUnion(sala: any): void {
@@ -151,11 +139,11 @@ export class HomePage implements OnInit, ViewWillEnter {
           position: 'top'
         });
         await toast.present();
- 
+
         // Actualizamos el saldo local con el nuevo valor
         this.usuario.UsuMonedasTotal = respuesta.monedas;
         localStorage.setItem('usuario', JSON.stringify(this.usuario));
- 
+
         // Acá luego navegaremos a la sala de espera
         // this.router.navigate(['/sala-espera', sala.SalId]);
       },
@@ -170,12 +158,12 @@ export class HomePage implements OnInit, ViewWillEnter {
       }
     });
   }
- 
+
   // ── irATienda ────────────────────────────────────────────────
   irATienda(): void {
     this.router.navigate(['/tienda']);
   }
- 
+
   // ── irAPerfil ────────────────────────────────────────────────
   irAPerfil(): void {
     this.router.navigate(['/perfil']);

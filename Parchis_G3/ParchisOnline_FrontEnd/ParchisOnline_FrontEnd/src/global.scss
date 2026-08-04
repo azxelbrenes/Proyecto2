@@ -10,6 +10,9 @@
  */
 
 /* Core CSS required for Ionic components to work properly */
+:root {
+  --ion-color-step-50: initial;
+}
 @import "@ionic/angular/css/core.css";
 
 /* Basic CSS for apps built with Ionic */
@@ -35,6 +38,66 @@
 /* @import "@ionic/angular/css/palettes/dark.always.css"; */
 /* @import "@ionic/angular/css/palettes/dark.class.css"; */
 //@import '@ionic/angular/css/palettes/dark.system.css';
+
 ion-content {
   --background: transparent;
+}
+
+// ── Alert custom para "Unirse a Sala" ─────────────────────────────
+.alert-parchis.alert-parchis {
+
+  .alert-wrapper {
+    background: linear-gradient(160deg, #2A1A4A 0%, #1C1230 60%, #120A20 100%) !important;
+    border-radius: 22px !important;
+    border: 2px solid rgba(255, 195, 0, 0.4) !important;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6) !important;
+  }
+
+  .alert-head {
+    text-align: center !important;
+    padding-top: 1.2rem !important;
+  }
+
+  .alert-title {
+    color: #FFE070 !important;
+    font-weight: 900 !important;
+    font-size: 1.3rem !important;
+  }
+
+  .alert-message {
+    color: rgba(255, 255, 255, 0.85) !important;
+    font-size: 0.95rem !important;
+    text-align: center !important;
+    padding: 0.8rem 1.4rem 1.2rem !important;
+    line-height: 1.5 !important;
+    white-space: pre-line !important;   // 👈 esta línea es la nueva
+  }
+
+  .alert-button-group {
+    justify-content: center !important;
+    gap: 0.8rem !important;
+    padding: 0.5rem 1rem 1.2rem !important;
+  }
+
+  .alert-button {
+    margin: 0 0.3rem !important;
+    border-radius: 12px !important;
+    font-weight: 800 !important;
+    padding: 0.7rem 0 !important;
+    flex: 1 !important;
+    text-align: center !important;
+  }
+
+  .alert-button-inner {
+    justify-content: center !important;
+  }
+
+  .btn-cancelar {
+    color: rgba(255, 255, 255, 0.7) !important;
+  }
+
+  .btn-unirme {
+    color: #1C1230 !important;
+    background: linear-gradient(135deg, #FFDE59, #E0A80E) !important;
+  }
 }
