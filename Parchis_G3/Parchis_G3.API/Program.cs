@@ -7,7 +7,9 @@ using Parchis_G3.AccesoDatos.Model;
 using Parchis_G3.Dominio.InterfacesAD;
 using Parchis_G3.Dominio.InterfacesLN;
 using Parchis_G3.LogicaNegocios.Implementaciones;
+using Parchis_G3.LogicaNegocios.Motor;   // ← NUEVO: Motor del juego y Bots
 using Parchis_G3.API.Services;
+using Parchis_G3.API.Hubs;               // ← NUEVO: Hub de SignalR
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -55,6 +57,29 @@ builder.Services.AddScoped<ISesionesActivaLN, SesionesActivaLN>();
 // una sola instancia compartida por todos los requests es suficiente.
 builder.Services.AddSingleton<JwtService>();
 
+// -- Motor del juego (Singleton) --
+// El Motor necesita mantener EN MEMORIA, mientras el servidor esté
+// encendido: de quién es el turno en cada partida, la racha de 5's
+// consecutivos y el valor de dado pendiente de usarse.
+// Si fuera Scoped, toda esa información se perdería en cada request
+// y el juego no podría funcionar.
+// Por eso sus métodos reciben IUnidadTrabajoEF como PARÁMETRO en
+// lugar de inyectarlo en el constructor (un Singleton no puede
+// depender de un Scoped).
+builder.Services.AddSingleton<IMotorParchisLN, MotorParchisLN>();
+
+// -- Servicio de Bots (Singleton) --
+// Depende de IMotorParchisLN que es Singleton, así que también
+// debe serlo — un Singleton solo puede depender de otro Singleton.
+builder.Services.AddSingleton<IBotServiceLN, BotServiceLN>();
+
+builder.Services.AddSingleton<IMatchmakingLN, MatchmakingLN>();
+
+// -- SignalR --
+// Habilita la comunicación en tiempo real por WebSockets entre
+// el servidor y los 4 celulares de una misma partida.
+builder.Services.AddSignalR();
+
 
 // Configuramos cómo la API valida los tokens JWT que llegan en
 // cada request. La clave secreta debe tener mínimo 256 bits.
@@ -89,21 +114,50 @@ builder.Services.AddAuthentication(options =>
         ValidateLifetime = true,
         ClockSkew = TimeSpan.Zero // Sin margen de tolerancia al expirar
     };
+
+    // SignalR no puede mandar el token en el header Authorization
+    // porque los WebSockets no lo soportan. En su lugar lo manda
+    // como query string (?access_token=...). Este bloque lo lee
+    // de ahí cuando la petición va dirigida a un Hub.
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
 });
 
 builder.Services.AddAuthorization();
 
-// Permite que la app Android haga requests a esta API.
-// En producción reemplazá "*" con la URL exacta de tu app.
+// Permite que la app Ionic/Android haga requests a esta API.
+// IMPORTANTE: SignalR NO funciona con AllowAnyOrigin() porque
+// necesita AllowCredentials(), y ambos son incompatibles entre sí.
+// Por eso listamos los orígenes exactos del frontend.
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("PoliticaAndroid", policy =>
     {
-        policy.AllowAnyOrigin()
+        policy.WithOrigins(
+                  "http://localhost:8100",
+                  "http://localhost:8101",
+                  "http://localhost:8102",
+                  "capacitor://localhost",   // para el APK en Android
+                  "http://localhost"          // para el APK en Android
+              )
               .AllowAnyMethod()
-              .AllowAnyHeader();
+              .AllowAnyHeader()
+              .AllowCredentials();
     });
 });
+
 // Configuramos que el JSON mantenga los nombres exactos de C# (PascalCase)
 // en lugar de convertirlos a camelCase automáticamente.
 // Esto es necesario porque el frontend Ionic espera nombres como
@@ -114,8 +168,6 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.PropertyNamingPolicy = null;
     });
 
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -136,5 +188,9 @@ app.UseCors("PoliticaAndroid"); // Aplica la política CORS
 app.UseAuthentication();  // Valida el token JWT ← debe ir ANTES de Authorization
 app.UseAuthorization();   // Verifica roles y permisos
 app.MapControllers();     // Registra todos los controllers
+
+// Registra el Hub de SignalR en la ruta /hubs/partida
+// El frontend Ionic se conectará a: http://localhost:5051/hubs/partida
+app.MapHub<PartidaHub>("/hubs/partida");
 
 app.Run();

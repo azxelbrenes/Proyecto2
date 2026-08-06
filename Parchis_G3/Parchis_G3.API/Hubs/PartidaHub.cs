@@ -1,5 +1,4 @@
-﻿
-using Microsoft.AspNetCore.SignalR;
+﻿using Microsoft.AspNetCore.SignalR;
 using Parchis_G3.Dominio.InterfacesAD;
 using Parchis_G3.Dominio.InterfacesLN;
 using AutoMapper;
@@ -9,63 +8,70 @@ namespace Parchis_G3.API.Hubs;
 public class PartidaHub : Hub
 {
     private readonly IMotorParchisLN _motor;
+    private readonly IBotServiceLN _botService;
     private readonly IUnidadTrabajoEF _unidadTrabajo;
     private readonly IMapper _mapper;
 
-    public PartidaHub(IMotorParchisLN motor, IUnidadTrabajoEF unidadTrabajo, IMapper mapper)
+    // Delay entre jugadas de bots para que se vea natural.
+    // Sin esto, 3 bots jugarían instantáneamente y el humano
+    // no entendería qué pasó en el tablero.
+    private const int DELAY_BOT_MS = 1500;
+
+    public PartidaHub(
+        IMotorParchisLN motor,
+        IBotServiceLN botService,
+        IUnidadTrabajoEF unidadTrabajo,
+        IMapper mapper)
     {
         _motor = motor;
+        _botService = botService;
         _unidadTrabajo = unidadTrabajo;
         _mapper = mapper;
     }
 
-    // Nombre del grupo de SignalR para una partida específica
     private static string GrupoPartida(int parId) => $"partida-{parId}";
 
     // ── UnirseAPartida ────────────────────────────────────────────
-    // El cliente Android llama a esto al entrar a la pantalla del
-    // tablero. Lo mete al grupo y le manda el estado actual completo.
     public async Task UnirseAPartida(int parId)
     {
         await Groups.AddToGroupAsync(Context.ConnectionId, GrupoPartida(parId));
 
         var estado = _motor.ObtenerEstado(parId, _unidadTrabajo, _mapper);
-
-        // Solo le mandamos el estado a quien se acaba de conectar,
-        // no a todo el grupo — por eso usamos Clients.Caller
         await Clients.Caller.SendAsync("EstadoActualizado", estado.ValorRetorno);
+
+        // Si al conectarse resulta que es turno de un bot (porque
+        // la partida ya estaba corriendo), lo disparamos
+        await ProcesarTurnosDeBots(parId);
     }
 
     // ── SalirDePartida ────────────────────────────────────────────
-    // Se llama al salir de la pantalla del tablero normalmente
-    // (no por desconexión — eso lo maneja OnDisconnectedAsync)
     public async Task SalirDePartida(int parId)
     {
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, GrupoPartida(parId));
     }
 
     // ── TirarDado ────────────────────────────────────────────────
-    // El jugador toca el dado en su celular. Validamos turno,
-    // tiramos el dado y le avisamos a TODOS los jugadores del grupo
-    // (no solo a quien tiró) para que vean el resultado en su pantalla.
     public async Task TirarDado(int parId, int jpId)
     {
         var resultado = _motor.TirarDado(parId, jpId, _unidadTrabajo, _mapper);
 
         if (!resultado.blnIndicadorTransaccion)
         {
-            // Si hubo error (ej: no es su turno), solo se lo avisamos a él
             await Clients.Caller.SendAsync("Error", resultado.strMensajeRespuesta);
             return;
         }
 
-        // A todos los jugadores de la partida les llega el resultado del dado
         await Clients.Group(GrupoPartida(parId)).SendAsync("DadoTirado", resultado.ValorRetorno);
+
+        // Si el motor cedió el turno automáticamente (sin movimientos
+        // posibles), puede que ahora le toque a un bot
+        if (resultado.ValorRetorno!.SiguienteTurnoJpId != jpId)
+        {
+            await ProcesarTurnosDeBots(parId);
+        }
     }
 
     // ── MoverFicha ───────────────────────────────────────────────
-    // El jugador eligió qué ficha mover con el dado ya tirado.
-    // Se valida el movimiento y se notifica el nuevo estado a todos.
     public async Task MoverFicha(int parId, int jpId, int numeroFicha, int valorDado)
     {
         var resultado = _motor.MoverFicha(parId, jpId, numeroFicha, valorDado, _unidadTrabajo, _mapper);
@@ -78,24 +84,73 @@ public class PartidaHub : Hub
 
         await Clients.Group(GrupoPartida(parId)).SendAsync("FichaMovida", resultado.ValorRetorno);
 
-        // Si la partida terminó, mandamos un evento aparte para que
-        // el frontend muestre la pantalla de victoria/derrota
+        // Si terminó la partida, avisamos y no seguimos con bots
         if (resultado.ValorRetorno!.PartidaFinalizada)
         {
             await Clients.Group(GrupoPartida(parId)).SendAsync("PartidaFinalizada", resultado.ValorRetorno);
+            return;
+        }
+
+        // Después de mover, revisamos si le toca a un bot
+        await ProcesarTurnosDeBots(parId);
+    }
+
+    // ================================================================
+    // PROCESAR TURNOS DE BOTS (el corazón del automatismo)
+    // ================================================================
+    // Este método revisa si el turno actual es de un bot. Si lo es,
+    // lo juega automáticamente y vuelve a revisar — porque después
+    // del bot podría venir OTRO bot. Se repite hasta que le toque
+    // a un humano o termine la partida.
+    //
+    // El límite de 20 iteraciones es una protección contra bucles
+    // infinitos por si algo sale mal en la lógica de turnos.
+    private async Task ProcesarTurnosDeBots(int parId)
+    {
+        int iteraciones = 0;
+
+        while (iteraciones < 20)
+        {
+            iteraciones++;
+
+            // ¿Le toca a un bot?
+            if (!_botService.EsTurnoDeBot(parId, _unidadTrabajo, out int jpIdBot))
+                break; // Le toca a un humano, salimos del bucle
+
+            // Pausa para que los jugadores humanos vean lo que pasa
+            await Task.Delay(DELAY_BOT_MS);
+
+            // El bot juega su turno completo (tira dado + mueve ficha)
+            var resultado = _botService.JugarTurnoBot(parId, jpIdBot, _unidadTrabajo, _mapper);
+
+            if (!resultado.blnIndicadorTransaccion)
+            {
+                // Si el bot falló, avisamos al grupo y cortamos
+                // para no quedarnos en bucle infinito
+                await Clients.Group(GrupoPartida(parId))
+                    .SendAsync("Error", $"Error en turno del bot: {resultado.strMensajeRespuesta}");
+                break;
+            }
+
+            // Notificamos a todos lo que hizo el bot
+            await Clients.Group(GrupoPartida(parId)).SendAsync("FichaMovida", resultado.ValorRetorno);
+
+            // ¿El bot ganó la partida?
+            if (resultado.ValorRetorno!.PartidaFinalizada)
+            {
+                await Clients.Group(GrupoPartida(parId)).SendAsync("PartidaFinalizada", resultado.ValorRetorno);
+                break;
+            }
+
+            // Si el bot sacó 5, tiene turno extra — el bucle continúa
+            // y vuelve a jugar. Si no, el turno pasó al siguiente
+            // jugador y el bucle revisa si ese también es bot.
         }
     }
 
     // ── OnDisconnectedAsync ──────────────────────────────────────
-    // Se dispara automáticamente cuando un jugador pierde conexión
-    // (cierra la app, se le va el internet, etc.)
-    // NOTA: la lógica completa de reconexión (HU-18: reservar 60s,
-    // activar bot si no vuelve) se implementa en un paso posterior,
-    // esto es la base sobre la que se construye.
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        // Acá en el futuro: buscar en qué partida estaba este jugador
-        // y marcar su JpEstadoConexion = 'DESCONECTADO' con timestamp
         await base.OnDisconnectedAsync(exception);
     }
 }
