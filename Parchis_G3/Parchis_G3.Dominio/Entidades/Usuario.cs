@@ -43,6 +43,10 @@ public partial class Usuario
 
     public DateTime UsuFechaCreacion { get; set; }
 
+    public int UsuIntentosFallidos { get; set; }
+
+    public DateTime? UsuFechaUltimoIntento { get; set; }
+
     public virtual ICollection<EquipamientoActivo> EquipamientoActivos { get; set; } = new List<EquipamientoActivo>();
 
     public virtual ICollection<FilaEspera> FilaEsperas { get; set; } = new List<FilaEspera>();

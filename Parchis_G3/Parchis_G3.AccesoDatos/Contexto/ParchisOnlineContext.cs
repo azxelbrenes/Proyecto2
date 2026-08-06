@@ -34,6 +34,9 @@ public partial class ParchisOnlineContext : DbContext
 
     public virtual DbSet<Sala> Salas { get; set; }
 
+    // NUEVO: tabla de auditoría de seguridad
+    public virtual DbSet<SegLog> SegLogs { get; set; }
+
     public virtual DbSet<SesionesActiva> SesionesActivas { get; set; }
 
     public virtual DbSet<TiposArticulo> TiposArticulos { get; set; }
@@ -46,9 +49,11 @@ public partial class ParchisOnlineContext : DbContext
 
     public virtual DbSet<UsuarioArticulo> UsuarioArticulos { get; set; }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Data Source=DESKTOP-OPRD7PU\\SQLEXPRESS;Initial Catalog=ParchisOnline;Persist Security Info=True;User ID=progra;Password=1234;MultipleActiveResultSets=False;Encrypt=false;TrustServerCertificate=true;");
+    // NOTA: se quitó el OnConfiguring con la cadena hardcodeada.
+    // La conexión ahora viene únicamente de appsettings.json a través
+    // de Program.cs (AddDbContext), que es la práctica correcta.
+    // Dejar la cadena aquí duplicaba la configuración y exponía
+    // las credenciales en el código fuente.
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -350,6 +355,56 @@ public partial class ParchisOnlineContext : DbContext
             entity.Property(e => e.SalPremioBase).HasColumnName("Sal_PremioBase");
         });
 
+        // ================================================================
+        // NUEVO: SegLogs — auditoría de eventos de seguridad
+        // ================================================================
+        // Registra cada login, intento fallido y bloqueo de cuenta con
+        // su IP y timestamp. Permite investigar incidentes de seguridad.
+        //
+        // Usu_ID es NULLABLE a propósito: si alguien intenta entrar con
+        // un correo que no existe, igual queremos registrar el intento
+        // (eso detecta ataques de enumeración de usuarios).
+        modelBuilder.Entity<SegLog>(entity =>
+        {
+            entity.HasKey(e => e.LogId).HasName("PK_SegLogs");
+
+            entity.ToTable("SegLogs");
+
+            // Índices para consultar rápido los intentos por correo e IP
+            entity.HasIndex(e => new { e.LogCorreo, e.LogFecha }, "IDX_SegLogs_Correo")
+                .IsDescending(false, true);
+
+            entity.HasIndex(e => new { e.LogIp, e.LogFecha }, "IDX_SegLogs_IP")
+                .IsDescending(false, true);
+
+            entity.Property(e => e.LogId).HasColumnName("Log_ID");
+            entity.Property(e => e.UsuId).HasColumnName("Usu_ID");
+            entity.Property(e => e.LogCorreo)
+                .HasMaxLength(200)
+                .IsUnicode(false)
+                .HasColumnName("Log_Correo");
+            entity.Property(e => e.LogEvento)
+                .HasMaxLength(50)
+                .IsUnicode(false)
+                .HasColumnName("Log_Evento");
+            entity.Property(e => e.LogIp)
+                .HasMaxLength(45)
+                .IsUnicode(false)
+                .HasColumnName("Log_IP");
+            entity.Property(e => e.LogDetalle)
+                .HasMaxLength(500)
+                .IsUnicode(false)
+                .HasColumnName("Log_Detalle");
+            entity.Property(e => e.LogFecha)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime")
+                .HasColumnName("Log_Fecha");
+
+            entity.HasOne(d => d.Usu).WithMany()
+                .HasForeignKey(d => d.UsuId)
+                .HasConstraintName("FK_SegLogs_Usuario");
+        });
+
         modelBuilder.Entity<SesionesActiva>(entity =>
         {
             entity.HasKey(e => e.SesId).HasName("PK__Sesiones__2EA80E8E2E193FDC");
@@ -507,6 +562,20 @@ public partial class ParchisOnlineContext : DbContext
             entity.Property(e => e.UsuFechaDesbloqueo)
                 .HasColumnType("datetime")
                 .HasColumnName("Usu_FechaDesbloqueo");
+
+            // ── NUEVO: control de intentos fallidos de login ──────
+            // Cuántas veces seguidas erró la contraseña. Al llegar a 5
+            // la cuenta se bloquea 15 minutos (SeguridadLN).
+            entity.Property(e => e.UsuIntentosFallidos)
+                .HasDefaultValue(0)
+                .HasColumnName("Usu_IntentosFallidos");
+
+            // Momento del último intento fallido. Sirve para resetear
+            // el contador si pasaron más de 30 minutos sin intentar.
+            entity.Property(e => e.UsuFechaUltimoIntento)
+                .HasColumnType("datetime")
+                .HasColumnName("Usu_FechaUltimoIntento");
+
             entity.Property(e => e.UsuMonedasGanadasPartida).HasColumnName("Usu_MonedasGanadasPartida");
             entity.Property(e => e.UsuMonedasTotal)
                 .HasDefaultValue(5000)

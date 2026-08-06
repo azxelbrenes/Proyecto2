@@ -1,56 +1,97 @@
-﻿using BCrypt.Net;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using BCrypt.Net;
+using Microsoft.AspNetCore.RateLimiting;
 using Parchis_G3.API.Services;
-
 using Parchis_G3.Dominio.EntidadesTipadas;
+using Parchis_G3.Dominio.InterfacesAD;
 using Parchis_G3.Dominio.InterfacesLN;
+using Parchis_G3.Utilitarios;
 
 namespace Parchis_G3.API.Controllers;
 
-[AllowAnonymous] // Sin JWT — cualquiera puede llegar aquí
+[AllowAnonymous]
 [ApiController]
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
-    // Inyectamos la LogicaNegocios de Usuario y el servicio JWT
     private readonly IUsuarioLN _usuarioLN;
+    private readonly ISeguridadLN _seguridadLN;
+    private readonly IUnidadTrabajoEF _unidadTrabajo;
     private readonly JwtService _jwtService;
     private readonly ILogger<AuthController> _logger;
 
-    public AuthController(IUsuarioLN usuarioLN, JwtService jwtService, ILogger<AuthController> logger)
+    public AuthController(
+        IUsuarioLN usuarioLN,
+        ISeguridadLN seguridadLN,
+        IUnidadTrabajoEF unidadTrabajo,
+        JwtService jwtService,
+        ILogger<AuthController> logger)
     {
         _usuarioLN = usuarioLN;
+        _seguridadLN = seguridadLN;
+        _unidadTrabajo = unidadTrabajo;
         _jwtService = jwtService;
         _logger = logger;
     }
 
-    // Registra un nuevo jugador.
-    // IMPORTANTE: la contraseña llega en texto plano desde Android
-    // y aquí la hasheamos con BCrypt ANTES de pasarla a la LN.
-    // La LN nunca ve la contraseña real — solo el hash.
+    // Obtiene la IP real del cliente, considerando proxies
+    private string? ObtenerIP()
+    {
+        // Si hay un proxy/load balancer, la IP real viene en este header
+        var forwarded = Request.Headers["X-Forwarded-For"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(forwarded))
+            return forwarded.Split(',')[0].Trim();
+
+        return HttpContext.Connection.RemoteIpAddress?.ToString();
+    }
+
+    // ================================================================
+    // POST /api/auth/registro
+    // ================================================================
+    // EnableRateLimiting("registro") limita a 3 registros por hora
+    // por IP — evita que un bot cree miles de cuentas.
     [HttpPost("registro")]
+    [EnableRateLimiting("registro")]
     public IActionResult Registro([FromBody] TUsuario usuario)
     {
         try
         {
             if (usuario == null)
-                return BadRequest("Los datos del usuario son requeridos.");
+                return BadRequest(new { strMensajeRespuesta = "Los datos del usuario son requeridos." });
 
-            // Hasheamos la contraseña aquí en la API
-            // BCrypt.HashPassword genera un hash seguro con salt automático
-            // El número 12 es el "work factor" — entre más alto, más lento de hackear
-            usuario.UsuPasswordHash = BCrypt.Net.BCrypt.HashPassword(
-                usuario.UsuPasswordHash, workFactor: 12
-            );
+            // ── Validación estricta antes de tocar la BD ─────────
+            var errorNombre = ValidadorInput.ValidarNombre(usuario.UsuNombre);
+            if (errorNombre != null)
+                return BadRequest(new { strMensajeRespuesta = errorNombre });
+
+            var errorCorreo = ValidadorInput.ValidarCorreo(usuario.UsuCorreo);
+            if (errorCorreo != null)
+                return BadRequest(new { strMensajeRespuesta = errorCorreo });
+
+            var errorPassword = ValidadorInput.ValidarPassword(usuario.UsuPasswordHash);
+            if (errorPassword != null)
+                return BadRequest(new { strMensajeRespuesta = errorPassword });
+
+            // ── Sanitizar y normalizar ───────────────────────────
+            usuario.UsuNombre = ValidadorInput.Sanitizar(usuario.UsuNombre);
+            usuario.UsuCorreo = usuario.UsuCorreo.Trim().ToLowerInvariant();
+
+            // ── Hash de la contraseña ────────────────────────────
+            // workFactor 12 = ~250ms por hash. Suficientemente lento
+            // para frenar fuerza bruta, suficientemente rápido para
+            // no molestar al usuario.
+            usuario.UsuPasswordHash = BCrypt.Net.BCrypt.HashPassword(usuario.UsuPasswordHash, workFactor: 12);
 
             var respuesta = _usuarioLN.Insertar(usuario);
 
             if (!respuesta.blnIndicadorTransaccion)
                 return BadRequest(respuesta);
 
-            // Al registrarse, generamos el token inmediatamente
-            // para que no tenga que hacer login por separado
+            // Auditoría del registro
+            _seguridadLN.RegistrarEvento("REGISTRO", usuario.UsuCorreo,
+                respuesta.ValorRetorno!.UsuId, ObtenerIP(), null, _unidadTrabajo);
+
             var token = _jwtService.GenerarToken(respuesta.ValorRetorno!);
 
             return Ok(new
@@ -63,45 +104,73 @@ public class AuthController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error en AuthController.Registro");
-            return StatusCode(500, "Error interno del servidor.");
+            return StatusCode(500, new { strMensajeRespuesta = "Error interno del servidor." });
         }
     }
 
-    // ── POST /api/auth/login ─────────────────────────────────────
-    // Autentica un usuario y devuelve su JWT.
-    // Recibe correo y contraseña, valida con BCrypt y genera el token.
+    // ================================================================
+    // POST /api/auth/login
+  
+    // EnableRateLimiting("login") limita a 5 intentos por minuto
+    // por IP — primera barrera contra fuerza bruta.
+    // El bloqueo de cuenta es la segunda barrera.
     [HttpPost("login")]
+    [EnableRateLimiting("login")]
     public IActionResult Login([FromBody] LoginRequest request)
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(request.Correo) ||
-                string.IsNullOrWhiteSpace(request.Password))
-                return BadRequest("El correo y la contraseña son requeridos.");
+            // ── Validación de formato ────────────────────────────
+            var errorCorreo = ValidadorInput.ValidarCorreo(request?.Correo);
+            if (errorCorreo != null)
+                return BadRequest(new { mensaje = errorCorreo });
 
-            // Buscamos el usuario por correo para obtener su hash almacenado
-            var buscar = _usuarioLN.Obtener(new TUsuario { UsuCorreo = request.Correo });
+            if (string.IsNullOrWhiteSpace(request!.Password))
+                return BadRequest(new { mensaje = "La contraseña es requerida." });
+
+            string correo = request.Correo.Trim().ToLowerInvariant();
+            string? ip = ObtenerIP();
+
+            // ── ¿Está bloqueada la cuenta? ───────────────────────
+            var mensajeBloqueo = _seguridadLN.VerificarBloqueoLogin(correo, _unidadTrabajo);
+            if (mensajeBloqueo != null)
+                return StatusCode(429, new { mensaje = mensajeBloqueo });
+
+            // ── Buscar el usuario ────────────────────────────────
+            var buscar = _usuarioLN.Obtener(new TUsuario { UsuCorreo = correo });
 
             if (!buscar.blnIndicadorTransaccion || !buscar.ValorRetorno!.Any())
+            {
+                // Registramos el fallo pero devolvemos mensaje genérico
+                _seguridadLN.RegistrarIntentoFallido(correo, ip, _unidadTrabajo);
                 return Unauthorized(new { mensaje = "Correo o contraseña incorrectos." });
+            }
 
             var usuario = buscar.ValorRetorno!.First();
 
-            // Verificamos la contraseña contra el hash guardado en BD
-            // BCrypt.Verify compara el texto plano con el hash almacenado
+            // ── Verificar la contraseña ──────────────────────────
             bool passwordValida = BCrypt.Net.BCrypt.Verify(request.Password, usuario.UsuPasswordHash);
 
             if (!passwordValida)
+            {
+                _seguridadLN.RegistrarIntentoFallido(correo, ip, _unidadTrabajo);
+                // Mismo mensaje que si el correo no existiera —
+                // no le damos pistas al atacante
                 return Unauthorized(new { mensaje = "Correo o contraseña incorrectos." });
+            }
 
-            // Verificamos que la cuenta no esté bloqueada por abandonos
-            if (usuario.UsuBloqueado && usuario.UsuFechaDesbloqueo > DateTime.Now)
+            // ── Verificar bloqueo por abandonos (HU-19) ──────────
+            if (usuario.UsuBloqueado == true && usuario.UsuFechaDesbloqueo > DateTime.Now)
+            {
                 return Unauthorized(new
                 {
                     mensaje = $"Cuenta bloqueada hasta {usuario.UsuFechaDesbloqueo:dd/MM/yyyy HH:mm}"
                 });
+            }
 
-            // Todo correcto — generamos el JWT y lo devolvemos
+            // ── Login correcto ───────────────────────────────────
+            _seguridadLN.RegistrarLoginExitoso(usuario.UsuId, correo, ip, _unidadTrabajo);
+
             var token = _jwtService.GenerarToken(usuario);
 
             return Ok(new
@@ -121,14 +190,12 @@ public class AuthController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error en AuthController.Login");
-            return StatusCode(500, "Error interno del servidor.");
+            return StatusCode(500, new { mensaje = "Error interno del servidor." });
         }
     }
 }
 
-// ── DTO para el Login ────────────────────────────────────────────
-// Clase simple para recibir solo correo y contraseña en el login.
-// No usamos TUsuario completo porque solo necesitamos esos 2 campos.
+// DTO simple para recibir correo y contraseña en el login
 public class LoginRequest
 {
     public string Correo { get; set; } = string.Empty;

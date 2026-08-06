@@ -43,5 +43,8 @@ public partial class TUsuario
 
     public DateTime UsuFechaCreacion { get; set; }
 
-   
+    public int UsuIntentosFallidos { get; set; }
+
+    public DateTime? UsuFechaUltimoIntento { get; set; }
+
 }

@@ -1,5 +1,7 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Parchis_G3.AccesoDatos.Implementaciones;
@@ -7,34 +9,32 @@ using Parchis_G3.AccesoDatos.Model;
 using Parchis_G3.Dominio.InterfacesAD;
 using Parchis_G3.Dominio.InterfacesLN;
 using Parchis_G3.LogicaNegocios.Implementaciones;
-using Parchis_G3.LogicaNegocios.Motor;   // ← NUEVO: Motor del juego y Bots
+using Parchis_G3.LogicaNegocios.Motor;
 using Parchis_G3.API.Services;
-using Parchis_G3.API.Hubs;               // ← NUEVO: Hub de SignalR
+using Parchis_G3.API.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// BASE DE DATOS
 
-// Registramos el contexto de Entity Framework apuntando a SQL Server.
-// La cadena de conexión viene de appsettings.json por seguridad —
-// nunca escribas usuario/contraseña directamente en el código.
 builder.Services.AddDbContext<ParchisOnlineContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
 
-
-// Registra el perfil que mapea entre entidades EF y entidades tipadas.
-// Se usa en la LogicaNegocios para convertir Sala ↔ TSala, etc.
+// ================================================================
+// AUTOMAPPER
+// ================================================================
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
-// -- AccesoDatos --
-// Scoped es obligatorio para EF Core el DbContext no puede
-// ser Singleton porque no es thread-safe (varios requests
-// simultáneos pisarían el mismo contexto de BD).
+// ================================================================
+// ACCESO A DATOS (Scoped)
+// ================================================================
+// Scoped es obligatorio para EF Core: el DbContext no es thread-safe.
 builder.Services.AddScoped<IUnidadTrabajoEF, UnidadTrabajoEF>();
 
-// -- LogicaNegocios --
-// Las LN dependen de IUnidadTrabajoEF (Scoped), por lo tanto
-// también deben ser Scoped. No se puede inyectar Scoped en Singleton.
+// ================================================================
+// LÓGICA DE NEGOCIOS (Scoped)
+// ================================================================
 builder.Services.AddScoped<IUsuarioLN, UsuarioLN>();
 builder.Services.AddScoped<ISalaLN, SalaLN>();
 builder.Services.AddScoped<IArticuloLN, ArticuloLN>();
@@ -51,38 +51,128 @@ builder.Services.AddScoped<IMensajesChatLN, MensajesChatLN>();
 builder.Services.AddScoped<IFilaEsperaLN, FilaEsperaLN>();
 builder.Services.AddScoped<ISesionesActivaLN, SesionesActivaLN>();
 
+// -- Seguridad (Scoped) --
+// NO es Singleton porque no guarda estado en memoria: los intentos
+// fallidos van a la BD para que sobrevivan a un reinicio del
+// servidor. Si estuvieran en memoria, reiniciar la API desbloquearía
+// a todos los atacantes.
+builder.Services.AddScoped<ISeguridadLN, SeguridadLN>();
 
-// JwtService NO depende de la BD ni de EF, solo genera y valida tokens.
-// Al ser stateless (sin estado interno), es perfecto como Singleton —
-// una sola instancia compartida por todos los requests es suficiente.
+// ================================================================
+// PAGOS CON PAYPAL
+// ================================================================
+// AddHttpClient registra el servicio con manejo correcto del pool
+// de conexiones (evita agotamiento de sockets).
+builder.Services.AddHttpClient<IPagoLN, PagoLN>();
+
+// ================================================================
+// SERVICIOS SINGLETON
+// ================================================================
+
+// JwtService es stateless — una instancia basta para toda la app.
 builder.Services.AddSingleton<JwtService>();
 
-// -- Motor del juego (Singleton) --
-// El Motor necesita mantener EN MEMORIA, mientras el servidor esté
-// encendido: de quién es el turno en cada partida, la racha de 5's
-// consecutivos y el valor de dado pendiente de usarse.
-// Si fuera Scoped, toda esa información se perdería en cada request
-// y el juego no podría funcionar.
-// Por eso sus métodos reciben IUnidadTrabajoEF como PARÁMETRO en
-// lugar de inyectarlo en el constructor (un Singleton no puede
-// depender de un Scoped).
+// -- Motor del juego --
+// Mantiene en memoria: turno actual, racha de 5's y dado pendiente
+// de cada partida. Si fuera Scoped, esa info se perdería en cada
+// request. Por eso sus métodos reciben IUnidadTrabajoEF como
+// parámetro (un Singleton no puede depender de un Scoped).
 builder.Services.AddSingleton<IMotorParchisLN, MotorParchisLN>();
 
-// -- Servicio de Bots (Singleton) --
-// Depende de IMotorParchisLN que es Singleton, así que también
-// debe serlo — un Singleton solo puede depender de otro Singleton.
+// -- Bots --
+// Depende del Motor (Singleton), así que también debe serlo.
 builder.Services.AddSingleton<IBotServiceLN, BotServiceLN>();
 
+// -- Matchmaking --
+// Mantiene el cronómetro de 30 segundos de cada partida en espera.
 builder.Services.AddSingleton<IMatchmakingLN, MatchmakingLN>();
 
+// -- Chat --
+// Mantiene el timestamp del último mensaje de cada jugador para
+// el cooldown anti-spam de 5 segundos.
+builder.Services.AddSingleton<IChatLN, ChatLN>();
+
+// -- Abandono y reconexión --
+// Mantiene el temporizador de 60 segundos de cada desconectado.
+builder.Services.AddSingleton<IAbandonoLN, AbandonoLN>();
+
 // -- SignalR --
-// Habilita la comunicación en tiempo real por WebSockets entre
-// el servidor y los 4 celulares de una misma partida.
 builder.Services.AddSignalR();
 
+// ================================================================
+// RATE LIMITING — protección contra fuerza bruta y abuso
+// ================================================================
+// ¿QUÉ HACE?
+// Limita cuántos requests puede hacer una IP en un período.
+// Sin esto, un bot puede probar 10,000 contraseñas por minuto.
+//
+// Usamos particionamiento por IP: cada dirección tiene su propio
+// contador, así un atacante no afecta a los usuarios legítimos.
+builder.Services.AddRateLimiter(options =>
+{
+    // Cuando se supera el límite devolvemos 429 Too Many Requests
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-// Configuramos cómo la API valida los tokens JWT que llegan en
-// cada request. La clave secreta debe tener mínimo 256 bits.
+    // ── Política para LOGIN: 5 intentos por minuto por IP ────────
+    // Es la primera barrera contra fuerza bruta. La segunda es
+    // el bloqueo de cuenta tras 5 fallos (SeguridadLN).
+    options.AddPolicy("login", contexto =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: contexto.Connection.RemoteIpAddress?.ToString() ?? "desconocida",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0   // Sin cola: se rechaza de una
+            })
+    );
+
+    // ── Política para REGISTRO: 3 cuentas por hora por IP ────────
+    // Evita que un bot cree miles de cuentas falsas.
+    options.AddPolicy("registro", contexto =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: contexto.Connection.RemoteIpAddress?.ToString() ?? "desconocida",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 3,
+                Window = TimeSpan.FromHours(1),
+                QueueLimit = 0
+            })
+    );
+
+    // ── Política global: 100 requests por minuto por IP ──────────
+    // Protege todos los demás endpoints contra abuso general.
+    // 100/min es holgado para uso normal pero frena scrapers.
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(contexto =>
+    {
+        // Los WebSockets de SignalR no pasan por rate limiting —
+        // una partida hace muchos mensajes y sería contraproducente
+        if (contexto.Request.Path.StartsWithSegments("/hubs"))
+            return RateLimitPartition.GetNoLimiter("signalr");
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: contexto.Connection.RemoteIpAddress?.ToString() ?? "desconocida",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 100,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            });
+    });
+
+    // Mensaje claro cuando se rechaza por exceso de requests
+    options.OnRejected = async (contexto, token) =>
+    {
+        contexto.HttpContext.Response.ContentType = "application/json";
+        await contexto.HttpContext.Response.WriteAsync(
+            "{\"mensaje\":\"Demasiadas solicitudes. Esperá un momento e intentá de nuevo.\"}",
+            token);
+    };
+});
+
+// ================================================================
+// AUTENTICACIÓN JWT
+// ================================================================
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("JWT Key no configurada en appsettings.");
 
@@ -90,7 +180,6 @@ var key = Encoding.ASCII.GetBytes(jwtKey);
 
 builder.Services.AddAuthentication(options =>
 {
-    // Definimos JWT Bearer como el esquema de autenticación por defecto
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 })
@@ -101,24 +190,17 @@ builder.Services.AddAuthentication(options =>
 
     options.TokenValidationParameters = new TokenValidationParameters
     {
-        // Validamos que el token fue firmado con NUESTRA clave secreta
         ValidateIssuerSigningKey = true,
         IssuerSigningKey = new SymmetricSecurityKey(key),
-
-        // Para desarrollo no validamos issuer ni audience —
-        // en producción deberías activarlos
         ValidateIssuer = false,
         ValidateAudience = false,
-
-        // El token expira en el tiempo definido al crearlo
         ValidateLifetime = true,
-        ClockSkew = TimeSpan.Zero // Sin margen de tolerancia al expirar
+        ClockSkew = TimeSpan.Zero
     };
 
-    // SignalR no puede mandar el token en el header Authorization
-    // porque los WebSockets no lo soportan. En su lugar lo manda
-    // como query string (?access_token=...). Este bloque lo lee
-    // de ahí cuando la petición va dirigida a un Hub.
+    // Los WebSockets no soportan headers personalizados, así que
+    // SignalR manda el token como query string (?access_token=...).
+    // Este bloque lo lee de ahí cuando la petición va a un Hub.
     options.Events = new JwtBearerEvents
     {
         OnMessageReceived = context =>
@@ -137,10 +219,11 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// Permite que la app Ionic/Android haga requests a esta API.
-// IMPORTANTE: SignalR NO funciona con AllowAnyOrigin() porque
-// necesita AllowCredentials(), y ambos son incompatibles entre sí.
-// Por eso listamos los orígenes exactos del frontend.
+// ================================================================
+// CORS
+// ================================================================
+// SignalR NO funciona con AllowAnyOrigin() porque necesita
+// AllowCredentials(), y ambos son incompatibles.
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("PoliticaAndroid", policy =>
@@ -149,8 +232,8 @@ builder.Services.AddCors(options =>
                   "http://localhost:8100",
                   "http://localhost:8101",
                   "http://localhost:8102",
-                  "capacitor://localhost",   // para el APK en Android
-                  "http://localhost"          // para el APK en Android
+                  "capacitor://localhost",
+                  "http://localhost"
               )
               .AllowAnyMethod()
               .AllowAnyHeader()
@@ -158,10 +241,11 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Configuramos que el JSON mantenga los nombres exactos de C# (PascalCase)
-// en lugar de convertirlos a camelCase automáticamente.
-// Esto es necesario porque el frontend Ionic espera nombres como
-// "SalNombre" y "UsuMonedasTotal" tal cual están en las entidades C#.
+// ================================================================
+// CONTROLLERS Y SWAGGER
+// ================================================================
+// PropertyNamingPolicy = null mantiene PascalCase en el JSON,
+// que es lo que espera el frontend Ionic.
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -173,24 +257,49 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// ── MIDDLEWARES (en este orden exacto) ──
-// El orden importa: cada request pasa por estos en secuencia.
+// ================================================================
+// MIDDLEWARES (el orden importa)
+// ================================================================
 
 if (app.Environment.IsDevelopment())
 {
-    // Swagger solo en desarrollo — interfaz visual para probar endpoints
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection(); // Redirige HTTP → HTTPS
-app.UseCors("PoliticaAndroid"); // Aplica la política CORS
-app.UseAuthentication();  // Valida el token JWT ← debe ir ANTES de Authorization
-app.UseAuthorization();   // Verifica roles y permisos
-app.MapControllers();     // Registra todos los controllers
+// ── Headers de seguridad ─────────────────────────────────────────
+// Cabeceras HTTP que protegen contra ataques comunes del navegador.
+// Se agregan a TODAS las respuestas de la API.
+app.Use(async (context, next) =>
+{
+    // Impide que el navegador "adivine" el tipo de contenido —
+    // previene que un archivo subido se ejecute como script
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
 
-// Registra el Hub de SignalR en la ruta /hubs/partida
-// El frontend Ionic se conectará a: http://localhost:5051/hubs/partida
+    // Impide que la API se cargue dentro de un iframe —
+    // previene ataques de clickjacking
+    context.Response.Headers["X-Frame-Options"] = "DENY";
+
+    // No enviar la URL completa como referer a sitios externos
+    context.Response.Headers["Referrer-Policy"] = "no-referrer";
+
+    // Desactiva APIs del navegador que la API no necesita
+    context.Response.Headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()";
+
+    await next();
+});
+
+app.UseHttpsRedirection();
+app.UseCors("PoliticaAndroid");
+
+// El rate limiter va ANTES de autenticación — así frena los
+// ataques antes de gastar recursos validando tokens
+app.UseRateLimiter();
+
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
+
 app.MapHub<PartidaHub>("/hubs/partida");
 
 app.Run();
