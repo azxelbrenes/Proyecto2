@@ -32,5 +32,13 @@ export const routes: Routes = [
     path: 'perfil',
     canActivate: [authGuard],
     loadComponent: () => import('./pages/perfil/perfil.page').then( m => m.PerfilPage)
+  },
+  {
+    path: 'sala-espera',
+    loadComponent: () => import('./pages/sala-espera/sala-espera.page').then( m => m.SalaEsperaPage)
+  },
+  {
+    path: 'tablero',
+    loadComponent: () => import('./pages/tablero/tablero.page').then( m => m.TableroPage)
   }
 ];
