@@ -20,10 +20,20 @@
       <h1 class="titulo-juego">PARCHÍS<span class="titulo-online">ONLINE</span></h1>
     </div>
 
-    <!-- ── Estado de carga ────────────────────────────────────── -->
+    <!-- ── Estado de carga de salas ───────────────────────────── -->
     <div class="loading-salas" *ngIf="cargando">
       <ion-spinner name="crescent" color="warning"></ion-spinner>
       <p>Cargando salas...</p>
+    </div>
+
+    <!-- ── Overlay mientras busca partida ─────────────────────── -->
+    <!-- Bloquea la pantalla para que no toque otra sala mientras
+         el backend está creando la partida y cobrando la entrada -->
+    <div class="buscando-overlay" *ngIf="buscandoPartida">
+      <div class="buscando-card">
+        <div class="dado-girando">🎲</div>
+        <p>Buscando partida...</p>
+      </div>
     </div>
 
     <!-- ── Carrusel de salas estilo cartas ───────────────────── -->
@@ -37,7 +47,7 @@
           [ngClass]="getSalaClass(sala.SalNombre)"
           (click)="unirseASala(sala)">
 
-          <!-- Brillo superior tipo carta -->
+          <!-- Brillo diagonal tipo carta plastificada -->
           <div class="card-shine"></div>
 
           <!-- Badge de precio arriba a la derecha -->
@@ -46,18 +56,18 @@
             {{ sala.SalCostoEntrada | number }}
           </div>
 
-          <!-- Candado si no alcanza -->
+          <!-- Candado si no tiene monedas suficientes -->
           <div class="card-candado" *ngIf="usuario?.UsuMonedasTotal < sala.SalCostoEntrada">
             <ion-icon name="lock-closed"></ion-icon>
           </div>
 
-          <!-- Icono/dado grande central -->
+          <!-- Ícono grande central según la sala -->
           <div class="card-icono-grande">{{ getSalaIcono(sala.SalNombre) }}</div>
 
           <!-- Nombre de la sala -->
           <div class="card-nombre">{{ sala.SalNombre }}</div>
 
-          <!-- Footer con el premio -->
+          <!-- Footer con el premio del ganador -->
           <div class="card-premio-footer">
             <span class="premio-label">PREMIO</span>
             <div class="premio-valor">
@@ -70,7 +80,7 @@
 
       </div>
 
-      <!-- Indicador de scroll (puntos) -->
+      <!-- Puntos indicadores del carrusel -->
       <div class="scroll-dots">
         <span class="dot" *ngFor="let sala of salas"></span>
       </div>

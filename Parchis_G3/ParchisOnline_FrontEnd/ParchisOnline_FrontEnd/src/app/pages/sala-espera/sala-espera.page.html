@@ -1,13 +1,92 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>sala-espera</ion-title>
-  </ion-toolbar>
-</ion-header>
+<ion-content class="espera-content" [fullscreen]="true">
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">sala-espera</ion-title>
-    </ion-toolbar>
-  </ion-header>
+  <div class="espera-container">
+
+    <!-- ── Header con nombre de sala ─────────────────────────── -->
+    <div class="header-sala">
+      <div class="sala-badge" [ngClass]="getSalaClass()">
+        <span class="sala-emoji">{{ getSalaIcono() }}</span>
+        <span class="sala-nombre">{{ estado?.SalaNombre || 'Buscando...' }}</span>
+      </div>
+    </div>
+
+    <!-- ── Círculo del cronómetro ────────────────────────────── -->
+    <div class="cronometro-wrapper">
+      <svg class="cronometro-svg" viewBox="0 0 120 120">
+        <!-- Círculo de fondo -->
+        <circle class="circulo-fondo" cx="60" cy="60" r="52"></circle>
+        <!-- Círculo de progreso que se va vaciando -->
+        <circle
+          class="circulo-progreso"
+          cx="60" cy="60" r="52"
+          [style.stroke-dasharray]="circunferencia"
+          [style.stroke-dashoffset]="offsetProgreso">
+        </circle>
+      </svg>
+
+      <div class="cronometro-texto">
+        <div class="segundos">{{ segundosRestantes }}</div>
+        <div class="segundos-label">seg</div>
+      </div>
+    </div>
+
+    <!-- ── Mensaje de estado ─────────────────────────────────── -->
+    <div class="estado-mensaje">
+      <p class="mensaje-principal">{{ mensajeEstado }}</p>
+      <p class="mensaje-secundario">
+        {{ jugadoresActuales }} de 4 jugadores
+      </p>
+    </div>
+
+    <!-- ── Slots de los 4 jugadores ──────────────────────────── -->
+    <div class="jugadores-grid">
+
+      <div
+        class="jugador-slot"
+        *ngFor="let slot of slots; let i = index"
+        [class.slot-ocupado]="slot.ocupado"
+        [class.slot-yo]="slot.esYo"
+        [ngClass]="slot.ocupado ? 'color-' + slot.color?.toLowerCase() : ''">
+
+        <!-- Jugador presente -->
+        <ng-container *ngIf="slot.ocupado">
+          <div class="slot-avatar">
+            {{ slot.esBot ? '🤖' : '🎮' }}
+          </div>
+          <div class="slot-nombre">{{ slot.nombre }}</div>
+          <div class="slot-color">{{ slot.color }}</div>
+          <div class="slot-tag" *ngIf="slot.esYo">VOS</div>
+        </ng-container>
+
+        <!-- Slot vacío esperando -->
+        <ng-container *ngIf="!slot.ocupado">
+          <div class="slot-avatar slot-vacio">
+            <ion-spinner name="dots" color="medium"></ion-spinner>
+          </div>
+          <div class="slot-nombre slot-esperando">Esperando...</div>
+        </ng-container>
+
+      </div>
+
+    </div>
+
+    <!-- ── Aviso de bots ─────────────────────────────────────── -->
+    <div class="aviso-bots" *ngIf="segundosRestantes <= 10 && jugadoresActuales < 4">
+      <ion-icon name="information-circle-outline"></ion-icon>
+      Los puestos vacíos se completarán con bots
+    </div>
+
+    <!-- ── Botón cancelar ────────────────────────────────────── -->
+    <ion-button
+      expand="block"
+      fill="outline"
+      class="btn-cancelar"
+      [disabled]="iniciando"
+      (click)="cancelarEspera()">
+      <ion-icon name="close-circle-outline" slot="start"></ion-icon>
+      Cancelar y recuperar monedas
+    </ion-button>
+
+  </div>
+
 </ion-content>

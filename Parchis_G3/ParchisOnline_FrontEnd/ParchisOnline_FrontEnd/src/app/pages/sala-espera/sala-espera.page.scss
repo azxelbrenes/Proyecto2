@@ -1,0 +1,238 @@
+.espera-content {
+  --background: radial-gradient(circle at top, #3A2465 0%, #1C1230 45%, #0D0818 100%);
+}
+
+.espera-container {
+  padding:        1.5rem 1.2rem 2rem;
+  min-height:     100vh;
+  max-width:      480px;
+  margin:         0 auto;
+  display:        flex;
+  flex-direction: column;
+  align-items:    center;
+}
+
+// ── Header de la sala ────────────────────────────────────────────
+.header-sala {
+  margin-bottom: 1.5rem;
+}
+
+.sala-badge {
+  display:        flex;
+  align-items:    center;
+  gap:            0.6rem;
+  padding:        0.6rem 1.4rem;
+  border-radius:  24px;
+  border:         2px solid rgba(255, 255, 255, 0.25);
+  box-shadow:     0 6px 16px rgba(0, 0, 0, 0.35);
+
+  .sala-emoji  { font-size: 1.6rem; }
+  .sala-nombre {
+    color:       white;
+    font-weight: 800;
+    font-size:   1.1rem;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  }
+}
+
+// Colores por sala — mismos gradientes del home
+.sala-bronce   { background: linear-gradient(135deg, #D08A4E, #8A5124); }
+.sala-plata    { background: linear-gradient(135deg, #C6D0E0, #7C879C); }
+.sala-oro      { background: linear-gradient(135deg, #FFDE59, #E0A80E); }
+.sala-diamante { background: linear-gradient(135deg, #7FC4FF, #3A7FD5); }
+.sala-elite    { background: linear-gradient(135deg, #D874EC, #932CAB); }
+
+// ── Cronómetro circular ──────────────────────────────────────────
+.cronometro-wrapper {
+  position:      relative;
+  width:         160px;
+  height:        160px;
+  margin-bottom: 1.2rem;
+}
+
+.cronometro-svg {
+  width:     100%;
+  height:    100%;
+  // Rotamos para que el progreso empiece arriba
+  transform: rotate(-90deg);
+}
+
+.circulo-fondo {
+  fill:         none;
+  stroke:       rgba(255, 255, 255, 0.1);
+  stroke-width: 8;
+}
+
+.circulo-progreso {
+  fill:            none;
+  stroke:          #FFC300;
+  stroke-width:    8;
+  stroke-linecap:  round;
+  // Transición suave al cambiar el valor cada segundo
+  transition:      stroke-dashoffset 1s linear;
+  filter:          drop-shadow(0 0 6px rgba(255, 195, 0, 0.5));
+}
+
+.cronometro-texto {
+  position:        absolute;
+  top:             0;
+  left:            0;
+  width:           100%;
+  height:          100%;
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  justify-content: center;
+
+  .segundos {
+    font-size:   3rem;
+    font-weight: 900;
+    color:       #FFE070;
+    line-height: 1;
+    text-shadow: 0 0 20px rgba(255, 195, 0, 0.4);
+  }
+
+  .segundos-label {
+    font-size:      0.75rem;
+    color:          rgba(255, 255, 255, 0.5);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top:     0.2rem;
+  }
+}
+
+// ── Mensaje de estado ────────────────────────────────────────────
+.estado-mensaje {
+  text-align:    center;
+  margin-bottom: 1.8rem;
+
+  .mensaje-principal {
+    color:       white;
+    font-size:   1.05rem;
+    font-weight: 700;
+    margin:      0 0 0.2rem;
+  }
+
+  .mensaje-secundario {
+    color:     rgba(255, 255, 255, 0.5);
+    font-size: 0.85rem;
+    margin:    0;
+  }
+}
+
+// ── Grid de los 4 slots ──────────────────────────────────────────
+.jugadores-grid {
+  display:               grid;
+  grid-template-columns: 1fr 1fr;
+  gap:                   0.8rem;
+  width:                 100%;
+  margin-bottom:         1.2rem;
+}
+
+.jugador-slot {
+  position:       relative;
+  display:        flex;
+  flex-direction: column;
+  align-items:    center;
+  padding:        1rem 0.6rem;
+  border-radius:  16px;
+  background:     rgba(255, 255, 255, 0.05);
+  border:         2px dashed rgba(255, 255, 255, 0.12);
+  min-height:     120px;
+  justify-content: center;
+  transition:     all 0.25s ease;
+
+  .slot-avatar {
+    width:           48px;
+    height:          48px;
+    border-radius:   50%;
+    background:      rgba(0, 0, 0, 0.25);
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    font-size:       1.5rem;
+    margin-bottom:   0.5rem;
+  }
+
+  .slot-nombre {
+    color:       white;
+    font-weight: 700;
+    font-size:   0.85rem;
+    text-align:  center;
+  }
+
+  .slot-color {
+    color:          rgba(255, 255, 255, 0.6);
+    font-size:      0.68rem;
+    font-weight:    600;
+    letter-spacing: 0.5px;
+    margin-top:     0.1rem;
+  }
+
+  .slot-esperando {
+    color:      rgba(255, 255, 255, 0.35);
+    font-weight: 500;
+    font-style: italic;
+  }
+
+  .slot-tag {
+    position:       absolute;
+    top:            0.5rem;
+    right:          0.5rem;
+    background:     #FFC300;
+    color:          #1C1230;
+    font-size:      0.6rem;
+    font-weight:    900;
+    padding:        0.15rem 0.45rem;
+    border-radius:  8px;
+    letter-spacing: 0.5px;
+  }
+}
+
+// Slot ocupado: borde sólido y color del jugador
+.slot-ocupado {
+  border-style: solid;
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow:   0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+// El slot del jugador actual se resalta
+.slot-yo {
+  border-color: #FFC300;
+  box-shadow:   0 0 16px rgba(255, 195, 0, 0.3);
+}
+
+// Colores de fondo por color de ficha asignado
+.color-rojo     { background: linear-gradient(150deg, rgba(220,60,60,0.35),  rgba(140,30,30,0.25)); }
+.color-azul     { background: linear-gradient(150deg, rgba(60,120,220,0.35), rgba(30,60,140,0.25)); }
+.color-verde    { background: linear-gradient(150deg, rgba(60,180,90,0.35),  rgba(30,110,50,0.25)); }
+.color-amarillo { background: linear-gradient(150deg, rgba(230,190,50,0.35), rgba(160,130,20,0.25)); }
+
+// ── Aviso de bots ────────────────────────────────────────────────
+.aviso-bots {
+  display:        flex;
+  align-items:    center;
+  gap:            0.4rem;
+  color:          #FFDD55;
+  font-size:      0.8rem;
+  background:     rgba(255, 195, 0, 0.1);
+  border:         1px solid rgba(255, 195, 0, 0.3);
+  border-radius:  10px;
+  padding:        0.6rem 0.9rem;
+  margin-bottom:  1rem;
+  text-align:     center;
+
+  ion-icon { font-size: 1.1rem; flex-shrink: 0; }
+}
+
+// ── Botón cancelar ───────────────────────────────────────────────
+.btn-cancelar {
+  width:            100%;
+  --border-radius:  14px;
+  --color:          rgba(255, 255, 255, 0.65);
+  --border-color:   rgba(255, 255, 255, 0.22);
+  font-weight:      600;
+  font-size:        0.85rem;
+  height:           2.9rem;
+  margin-top:       auto;
+}

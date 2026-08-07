@@ -314,3 +314,45 @@
     }
   }
 }
+.buscando-overlay {
+  position:        fixed;
+  top:             0;
+  left:            0;
+  right:           0;
+  bottom:          0;
+  background:      rgba(13, 8, 24, 0.88);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  z-index:         100;
+}
+
+.buscando-card {
+  display:        flex;
+  flex-direction: column;
+  align-items:    center;
+  gap:            1rem;
+
+  .dado-girando {
+    font-size: 4.5rem;
+    // El dado gira mientras espera — refuerza la sensación
+    // de que el sistema está trabajando
+    animation: girarDado 1.2s ease-in-out infinite;
+  }
+
+  p {
+    color:          #FFE070;
+    font-size:      1rem;
+    font-weight:    700;
+    letter-spacing: 0.5px;
+    margin:         0;
+  }
+}
+
+@keyframes girarDado {
+  0%   { transform: rotate(0deg)   scale(1);    }
+  50%  { transform: rotate(180deg) scale(1.15); }
+  100% { transform: rotate(360deg) scale(1);    }
+}

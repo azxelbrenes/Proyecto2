@@ -7,10 +7,11 @@ import {
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
-  logoBitcoin, lockClosed, chevronForward,
+  logoBitcoin, lockClosed, chevronForward, trophy,
   home, storefrontOutline, personOutline
 } from 'ionicons/icons';
 import { SalaService } from '../../services/sala.service';
+import { PartidaService } from '../../services/partida.service';
 import { AuthService } from '../../services/auth';
 
 @Component({
@@ -23,12 +24,14 @@ import { AuthService } from '../../services/auth';
 export class HomePage implements OnInit, ViewWillEnter {
 
   // ── Variables ─────────────────────────────────────────────────
-  usuario:  any   = null;   // Datos del usuario autenticado
-  salas:    any[] = [];     // Las 5 salas traídas de la API
-  cargando: boolean = true; // Spinner mientras carga
+  usuario:  any     = null;   // Datos del usuario autenticado
+  salas:    any[]   = [];     // Las 5 salas traídas de la API
+  cargando: boolean = true;   // Spinner mientras carga
+  buscandoPartida: boolean = false;  // Evita doble click en una sala
 
   constructor(
     private salaService:      SalaService,
+    private partidaService:   PartidaService,
     private authService:      AuthService,
     private router:           Router,
     private toastController:  ToastController,
@@ -36,20 +39,24 @@ export class HomePage implements OnInit, ViewWillEnter {
   ) {
     // Registramos los íconos que usamos en el HTML
     addIcons({
-      logoBitcoin, lockClosed, chevronForward,
+      logoBitcoin, lockClosed, chevronForward, trophy,
       home, storefrontOutline, personOutline
     });
   }
 
   ngOnInit(): void {
-    // Se ejecuta UNA sola vez, cuando Ionic crea la página por primera vez
+    // Se ejecuta UNA sola vez, cuando Ionic crea la página
     this.usuario = this.authService.getUsuario();
     this.cargarSalas();
   }
 
   // ── ionViewWillEnter ─────────────────────────────────────────
+  // Se ejecuta CADA VEZ que volvemos a esta página (por ejemplo
+  // al regresar del perfil o de cancelar una sala de espera),
+  // así el saldo y el nombre siempre están actualizados.
   ionViewWillEnter(): void {
     this.usuario = this.authService.getUsuario();
+    this.buscandoPartida = false;  // Reseteamos por si volvimos de una espera
   }
 
   // ── cargarSalas ──────────────────────────────────────────────
@@ -61,16 +68,12 @@ export class HomePage implements OnInit, ViewWillEnter {
         this.cargando = false;
         this.salas = respuesta.ValorRetorno ?? [];
       },
-      error: async (error: any) => {
+      error: async () => {
         this.cargando = false;
-
-        const toast = await this.toastController.create({
-          message:  'No se pudieron cargar las salas. Verificá tu conexión.',
-          duration: 3000,
-          color:    'danger',
-          position: 'top'
-        });
-        await toast.present();
+        await this.mostrarToast(
+          'No se pudieron cargar las salas. Verificá tu conexión.',
+          'danger'
+        );
       }
     });
   }
@@ -100,71 +103,102 @@ export class HomePage implements OnInit, ViewWillEnter {
   }
 
   // ── unirseASala ──────────────────────────────────────────────
-  // Verifica el saldo y confirma antes de unirse a la sala
+  // Valida el saldo localmente y pide confirmación antes de
+  // llamar al matchmaking (que sí cobra las monedas de verdad).
   async unirseASala(sala: any): Promise<void> {
-    // Si no tiene monedas suficientes, no dejamos avanzar
+    // Si ya está buscando partida, ignoramos clicks extra
+    if (this.buscandoPartida) return;
+
+    // Validación local rápida — el backend igual la revalida
     if (this.usuario.UsuMonedasTotal < sala.SalCostoEntrada) {
-      const toast = await this.toastController.create({
-        message:  `Necesitás ${sala.SalCostoEntrada} monedas para entrar a ${sala.SalNombre}.`,
-        duration: 2500,
-        color:    'warning',
-        position: 'top'
-      });
-      await toast.present();
+      await this.mostrarToast(
+        `Necesitás ${sala.SalCostoEntrada} monedas para entrar a ${sala.SalNombre}.`,
+        'warning'
+      );
       return;
     }
 
-    // Confirmación antes de descontar monedas (con estilo custom)
     const alert = await this.alertController.create({
-  cssClass: 'alert-parchis',
-  header:  sala.SalNombre,
-  message: `¿Querés unirte por ${sala.SalCostoEntrada} monedas?\n\nPremio: ${sala.SalPremioBase} monedas.`,
-  buttons: [
-    { text: 'Cancelar', role: 'cancel', cssClass: 'btn-cancelar' },
-    { text: 'Unirme', cssClass: 'btn-unirme', handler: () => this.confirmarUnion(sala) }
-  ]
-});
+      cssClass: 'alert-parchis',
+      header:   sala.SalNombre,
+      message:  `¿Querés unirte por ${sala.SalCostoEntrada} monedas?\n\nPremio: ${sala.SalPremioBase} monedas.`,
+      buttons: [
+        { text: 'Cancelar', role: 'cancel', cssClass: 'btn-cancelar' },
+        {
+          text: 'Unirme',
+          cssClass: 'btn-unirme',
+          handler: () => this.buscarPartida(sala)
+        }
+      ]
+    });
     await alert.present();
   }
 
-  // ── confirmarUnion ───────────────────────────────────────────
-  // Llama a la API para unirse a la sala seleccionada
-  private confirmarUnion(sala: any): void {
-    this.salaService.unirseASala(sala.SalId).subscribe({
-      next: async (respuesta: any) => {
-        const toast = await this.toastController.create({
-          message:  respuesta.mensaje,
-          duration: 2000,
-          color:    'success',
-          position: 'top'
-        });
-        await toast.present();
+  // ── buscarPartida ────────────────────────────────────────────
+  // Llama al matchmaking. El backend:
+  //   1. Busca una partida ESPERANDO con cupo, o crea una nueva
+  //   2. Le asigna el siguiente color libre
+  //   3. Le cobra la entrada
+  //   4. Devuelve ParId y JpId para conectarse al Hub
+  private buscarPartida(sala: any): void {
+    this.buscandoPartida = true;
 
-        // Actualizamos el saldo local con el nuevo valor
-        this.usuario.UsuMonedasTotal = respuesta.monedas;
+    this.partidaService.buscarPartida(sala.SalId).subscribe({
+      next: async (respuesta: any) => {
+        const datos = respuesta.ValorRetorno;
+
+        if (!datos) {
+          this.buscandoPartida = false;
+          await this.mostrarToast('No se pudo crear la partida.', 'danger');
+          return;
+        }
+
+        // Actualizamos el saldo con el valor real que devolvió el backend
+        this.usuario.UsuMonedasTotal = datos.MonedasRestantes;
         localStorage.setItem('usuario', JSON.stringify(this.usuario));
 
-        // Acá luego navegaremos a la sala de espera
-        // this.router.navigate(['/sala-espera', sala.SalId]);
+        await this.mostrarToast(
+          `Te uniste a ${sala.SalNombre} como ${datos.ColorAsignado} 🎲`,
+          'success'
+        );
+
+        // Navegamos a la sala de espera con los IDs que necesita
+        // para conectarse al Hub de SignalR
+        this.router.navigate(['/sala-espera'], {
+          queryParams: {
+            parId: datos.ParId,
+            jpId:  datos.JpId
+          }
+        });
       },
       error: async (error: any) => {
-        const toast = await this.toastController.create({
-          message:  error.error?.mensaje ?? 'No se pudo unir a la sala.',
-          duration: 2500,
-          color:    'danger',
-          position: 'top'
-        });
-        await toast.present();
+        this.buscandoPartida = false;
+
+        const mensaje = error.error?.strMensajeRespuesta
+          ?? error.error?.mensaje
+          ?? 'No se pudo unir a la sala.';
+
+        await this.mostrarToast(mensaje, 'danger');
       }
     });
   }
 
-  // ── irATienda ────────────────────────────────────────────────
+  // ── mostrarToast ─────────────────────────────────────────────
+  private async mostrarToast(mensaje: string, color: string): Promise<void> {
+    const toast = await this.toastController.create({
+      message:  mensaje,
+      duration: 2500,
+      color,
+      position: 'top'
+    });
+    await toast.present();
+  }
+
+  // ── Navegación ───────────────────────────────────────────────
   irATienda(): void {
     this.router.navigate(['/tienda']);
   }
 
-  // ── irAPerfil ────────────────────────────────────────────────
   irAPerfil(): void {
     this.router.navigate(['/perfil']);
   }

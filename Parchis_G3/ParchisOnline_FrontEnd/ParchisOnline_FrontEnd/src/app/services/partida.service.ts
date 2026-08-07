@@ -15,9 +15,9 @@ export class PartidaService {
     private authService: AuthService
   ) {}
 
-  // ================================================================
+  //Celebro del juego
   // MATCHMAKING
-  // ================================================================
+ 
 
   // ── buscarPartida ────────────────────────────────────────────
   // El jugador toca una sala en el home. El backend lo mete a una
@@ -59,10 +59,8 @@ export class PartidaService {
     });
   }
 
-  // ================================================================
-  // PARTIDA EN CURSO
-  // ================================================================
 
+  // PARTIDA EN CURSO
   // ── obtenerEstado ────────────────────────────────────────────
   // Trae la foto completa del tablero: todas las fichas, sus
   // posiciones y de quién es el turno. Se usa al reconectarse.
@@ -90,9 +88,8 @@ export class PartidaService {
     });
   }
 
-  // ================================================================
   // CHAT
-  // ================================================================
+  
 
   // ── obtenerMensajesPredefinidos ──────────────────────────────
   // Los 4 mensajes rápidos: ¡Buena jugada!, ¡Eso te pasa!, etc.

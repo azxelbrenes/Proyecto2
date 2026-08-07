@@ -101,3 +101,82 @@ ion-content {
     background: linear-gradient(135deg, #FFDE59, #E0A80E) !important;
   }
 }
+.alert-parchis {
+  --background: #1C1230;
+
+  .alert-wrapper {
+    background:    linear-gradient(160deg, #2D1B4E 0%, #1C1230 100%) !important;
+    border:        2px solid rgba(255, 195, 0, 0.35);
+    border-radius: 20px !important;
+    box-shadow:    0 12px 32px rgba(0, 0, 0, 0.6);
+    max-width:     330px;
+  }
+
+  // Título del alerta
+  .alert-head {
+    padding-bottom: 0.4rem;
+
+    .alert-title {
+      color:          #FFC300 !important;
+      font-weight:    800 !important;
+      font-size:      1.25rem !important;
+      text-align:     center;
+      letter-spacing: 0.3px;
+    }
+  }
+
+  // Mensaje del cuerpo
+  .alert-message {
+    color:       rgba(255, 255, 255, 0.75) !important;
+    font-size:   0.92rem !important;
+    text-align:  center;
+    line-height: 1.5;
+    padding-top: 0.3rem;
+    // Respeta los saltos de línea que ponemos con \n
+    white-space: pre-line;
+  }
+
+  // Contenedor de los botones
+  .alert-button-group {
+    padding:        0.8rem 1rem 1rem;
+    display:        flex;
+    gap:            0.6rem;
+    justify-content: stretch;
+  }
+
+  .alert-button {
+    flex:            1;
+    border-radius:   12px !important;
+    font-weight:     700 !important;
+    font-size:       0.9rem !important;
+    text-transform:  none !important;
+    margin:          0 !important;
+    height:          2.8rem;
+
+    // Quitamos el efecto ripple gris de Material
+    .alert-button-inner {
+      justify-content: center;
+    }
+  }
+
+  // ── Botón secundario (Cancelar / Seguir esperando) ──────────
+  .btn-cancelar {
+    color:      rgba(255, 255, 255, 0.7) !important;
+    background: rgba(255, 255, 255, 0.08);
+    border:     1px solid rgba(255, 255, 255, 0.18);
+  }
+
+  // ── Botón principal (Unirme) ────────────────────────────────
+  .btn-unirme {
+    color:      #1C1230 !important;
+    background: linear-gradient(135deg, #FFC300, #E0A80E);
+    box-shadow: 0 4px 12px rgba(255, 195, 0, 0.3);
+  }
+
+  // ── Botón destructivo (Salir / Cerrar sesión) ───────────────
+  .btn-peligro {
+    color:      #FF8A80 !important;
+    background: rgba(255, 107, 107, 0.15);
+    border:     1px solid rgba(255, 107, 107, 0.4);
+  }
+}
