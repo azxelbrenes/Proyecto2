@@ -1,0 +1,333 @@
+.monedas-content {
+  --background: radial-gradient(circle at top, #3A2465 0%, #1C1230 45%, #0D0818 100%);
+}
+
+.monedas-container {
+  padding:    1rem 1.1rem 2rem;
+  min-height: 100vh;
+  max-width:  480px;
+  margin:     0 auto;
+}
+
+// ── Header ───────────────────────────────────────────────────────
+.header-bar {
+  display:         flex;
+  justify-content: space-between;
+  align-items:     center;
+  margin-bottom:   1.2rem;
+}
+
+.btn-volver {
+  --color:   rgba(255, 255, 255, 0.7);
+  --padding-start: 0;
+  font-size: 0.9rem;
+
+  &:hover { --color: #FFC300; }
+}
+
+.monedas-badge {
+  display:        flex;
+  align-items:    center;
+  gap:            0.4rem;
+  background:     linear-gradient(135deg, rgba(255, 195, 0, 0.25), rgba(255, 140, 0, 0.12));
+  border:         1px solid rgba(255, 195, 0, 0.5);
+  border-radius:  20px;
+  padding:        0.4rem 0.95rem;
+
+  ion-icon { color: #FFC300; font-size: 1.15rem; }
+  span     { color: #FFDD55; font-weight: 800; font-size: 0.95rem; }
+}
+
+// ── Título ───────────────────────────────────────────────────────
+.titulo-section {
+  text-align:    center;
+  margin-bottom: 1.6rem;
+
+  .titulo-icono {
+    font-size:     3rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .titulo {
+    color:          #FFE070;
+    font-size:      1.7rem;
+    font-weight:    900;
+    margin:         0;
+    letter-spacing: 0.5px;
+    text-shadow:    0 0 20px rgba(255, 195, 0, 0.35);
+  }
+
+  .subtitulo {
+    color:     rgba(255, 255, 255, 0.5);
+    font-size: 0.85rem;
+    margin:    0.3rem 0 0;
+  }
+}
+
+// ── Loading ──────────────────────────────────────────────────────
+.loading-paquetes {
+  text-align: center;
+  padding:    3rem 0;
+  color:      rgba(255, 255, 255, 0.55);
+  p { margin-top: 0.8rem; font-size: 0.9rem; }
+}
+
+// ================================================================
+// ORDEN PENDIENTE
+// ================================================================
+// Aparece cuando el usuario ya abrió PayPal y debe volver
+// a confirmar que completó el pago.
+.orden-pendiente {
+  background:    rgba(255, 195, 0, 0.08);
+  border:        2px solid rgba(255, 195, 0, 0.35);
+  border-radius: 18px;
+  padding:       1.3rem 1.1rem;
+  margin-bottom: 1.2rem;
+
+  .pendiente-header {
+    display:       flex;
+    align-items:   center;
+    gap:           0.5rem;
+    color:         #FFDD55;
+    font-weight:   800;
+    font-size:     1rem;
+    margin-bottom: 0.6rem;
+
+    ion-icon { font-size: 1.3rem; }
+  }
+
+  .pendiente-texto {
+    color:       rgba(255, 255, 255, 0.65);
+    font-size:   0.85rem;
+    line-height: 1.5;
+    margin:      0 0 1rem;
+  }
+
+  .pendiente-detalle {
+    display:         flex;
+    justify-content: space-between;
+    align-items:     center;
+    background:      rgba(0, 0, 0, 0.25);
+    border-radius:   10px;
+    padding:         0.65rem 0.9rem;
+    margin-bottom:   1rem;
+
+    span   { color: rgba(255,255,255,0.6); font-size: 0.85rem; }
+    strong { color: #FFDD55; font-size: 0.95rem; font-weight: 800; }
+  }
+}
+
+.btn-confirmar {
+  --background:    linear-gradient(135deg, #4CAF50, #388E3C);
+  --color:         white;
+  --border-radius: 12px;
+  --box-shadow:    0 4px 14px rgba(76, 175, 80, 0.35);
+  font-weight:     800;
+  height:          3rem;
+  margin-bottom:   0.4rem;
+}
+
+.btn-cancelar-orden {
+  --color:   rgba(255, 255, 255, 0.45);
+  font-size: 0.82rem;
+  height:    2.2rem;
+}
+
+// ================================================================
+// GRID DE PAQUETES
+// ================================================================
+.paquetes-grid {
+  display:               grid;
+  grid-template-columns: 1fr 1fr;
+  gap:                   0.9rem;
+  margin-bottom:         1.3rem;
+}
+
+.paquete-card {
+  position:       relative;
+  overflow:       hidden;
+  border-radius:  18px;
+  padding:        1.4rem 0.8rem 0.9rem;
+  display:        flex;
+  flex-direction: column;
+  align-items:    center;
+  text-align:     center;
+  cursor:         pointer;
+  border:         2px solid rgba(255, 255, 255, 0.12);
+  box-shadow:     0 6px 18px rgba(0, 0, 0, 0.35);
+  transition:     transform 0.15s ease;
+
+  &:active { transform: scale(0.97); }
+
+  // Brillo diagonal tipo carta
+  .card-shine {
+    position:   absolute;
+    top:        -60%;
+    left:       -25%;
+    width:      65%;
+    height:     220%;
+    background: linear-gradient(120deg, rgba(255,255,255,0.16) 0%, transparent 60%);
+    transform:  rotate(18deg);
+    pointer-events: none;
+  }
+}
+
+// ── Badge "POPULAR" ──────────────────────────────────────────────
+.badge-popular {
+  position:       absolute;
+  top:            0.5rem;
+  right:          0.5rem;
+  display:        flex;
+  align-items:    center;
+  gap:            0.15rem;
+  background:     linear-gradient(135deg, #FF6B35, #E63946);
+  color:          white;
+  font-size:      0.55rem;
+  font-weight:    900;
+  letter-spacing: 0.5px;
+  padding:        0.2rem 0.45rem;
+  border-radius:  8px;
+  z-index:        2;
+  box-shadow:     0 2px 8px rgba(230, 57, 70, 0.4);
+
+  ion-icon { font-size: 0.7rem; }
+}
+
+// ── Contenido del paquete ────────────────────────────────────────
+.paquete-emoji {
+  font-size:     2.6rem;
+  margin-bottom: 0.4rem;
+  z-index:       1;
+  filter:        drop-shadow(0 4px 6px rgba(0,0,0,0.3));
+}
+
+.paquete-monedas {
+  display:       flex;
+  align-items:   center;
+  gap:           0.25rem;
+  color:         #FFEE99;
+  font-weight:   900;
+  font-size:     1.05rem;
+  margin-bottom: 0.2rem;
+  z-index:       1;
+  text-shadow:   0 2px 4px rgba(0,0,0,0.35);
+
+  ion-icon { font-size: 1rem; color: #FFC300; }
+}
+
+.paquete-nombre {
+  color:         rgba(255, 255, 255, 0.75);
+  font-size:     0.72rem;
+  font-weight:   600;
+  margin-bottom: 0.6rem;
+  z-index:       1;
+}
+
+.paquete-precio {
+  display:        flex;
+  flex-direction: column;
+  align-items:    center;
+  margin-bottom:  0.8rem;
+  z-index:        1;
+
+  .precio-usd {
+    color:       white;
+    font-size:   1.15rem;
+    font-weight: 900;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  }
+
+  .precio-crc {
+    color:     rgba(255, 255, 255, 0.5);
+    font-size: 0.7rem;
+    margin-top: 0.1rem;
+  }
+}
+
+.btn-comprar {
+  width:            100%;
+  --background:     rgba(255, 255, 255, 0.18);
+  --color:          white;
+  --border-radius:  10px;
+  --box-shadow:     none;
+  border:           1px solid rgba(255, 255, 255, 0.3);
+  border-radius:    10px;
+  font-weight:      800;
+  font-size:        0.8rem;
+  height:           2.3rem;
+  margin:           0;
+  z-index:          1;
+}
+
+// ================================================================
+// COLORES POR PAQUETE
+// ================================================================
+// Cada paquete tiene un color propio, y los más caros se ven
+// más vistosos — eso comunica valor sin necesidad de leer el precio.
+
+.paquete-pequeno {
+  background: linear-gradient(150deg, #6B8E9E, #3D5A68 70%, #2A3F४A);
+  background: linear-gradient(150deg, #6B8E9E, #3D5A68 70%, #2A3F4A);
+}
+
+.paquete-mediano {
+  background:   linear-gradient(150deg, #4A90D9, #2E5FA3 70%, #1D4A8C);
+  border-color: rgba(120, 180, 255, 0.4);
+  box-shadow:   0 6px 18px rgba(0,0,0,0.35), 0 0 18px rgba(74, 144, 217, 0.2);
+}
+
+.paquete-grande {
+  background:   linear-gradient(150deg, #B347C9, #7E2C93 70%, #571D67);
+  border-color: rgba(200, 120, 235, 0.45);
+  box-shadow:   0 6px 18px rgba(0,0,0,0.35), 0 0 20px rgba(179, 71, 201, 0.25);
+}
+
+.paquete-premium {
+  background:   linear-gradient(150deg, #FFD84D, #E0A80E 65%, #9A7300);
+  border-color: rgba(255, 220, 100, 0.6);
+  box-shadow:   0 6px 18px rgba(0,0,0,0.35), 0 0 26px rgba(255, 195, 0, 0.35);
+
+  .paquete-nombre { color: rgba(60, 40, 0, 0.75); }
+  .paquete-monedas { color: #4A3200; text-shadow: none;
+    ion-icon { color: #6B4A00; } }
+  .paquete-precio .precio-usd { color: #3A2800; text-shadow: none; }
+  .paquete-precio .precio-crc { color: rgba(60, 40, 0, 0.6); }
+
+  .btn-comprar {
+    --background: rgba(60, 40, 0, 0.25);
+    --color:      #FFF4C9;
+    border-color: rgba(60, 40, 0, 0.35);
+  }
+}
+
+// ── Aviso de seguridad ───────────────────────────────────────────
+.aviso-seguridad {
+  display:        flex;
+  align-items:    flex-start;
+  gap:            0.7rem;
+  background:     rgba(76, 175, 80, 0.08);
+  border:         1px solid rgba(76, 175, 80, 0.25);
+  border-radius:  12px;
+  padding:        0.8rem 1rem;
+
+  ion-icon {
+    color:      #81C784;
+    font-size:  1.4rem;
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+  }
+
+  strong {
+    color:       #A5D6A7;
+    font-size:   0.85rem;
+    display:     block;
+    margin-bottom: 0.15rem;
+  }
+
+  p {
+    color:       rgba(255, 255, 255, 0.5);
+    font-size:   0.75rem;
+    line-height: 1.4;
+    margin:      0;
+  }
+}

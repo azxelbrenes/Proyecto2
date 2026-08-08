@@ -1,0 +1,132 @@
+<ion-content class="monedas-content" [fullscreen]="true">
+
+  <div class="monedas-container">
+
+    <!-- ── Header con botón volver y saldo ───────────────────── -->
+    <div class="header-bar">
+      <ion-button fill="clear" class="btn-volver" (click)="volver()">
+        <ion-icon name="arrow-back-outline" slot="start"></ion-icon>
+        Tienda
+      </ion-button>
+
+      <div class="monedas-badge">
+        <ion-icon name="logo-bitcoin"></ion-icon>
+        <span>{{ usuario?.UsuMonedasTotal || 0 | number }}</span>
+      </div>
+    </div>
+
+    <!-- ── Título ─────────────────────────────────────────────── -->
+    <div class="titulo-section">
+      <div class="titulo-icono">💰</div>
+      <h1 class="titulo">Comprar Monedas</h1>
+      <p class="subtitulo">Recargá tu saldo y seguí jugando</p>
+    </div>
+
+    <!-- ── Loading ────────────────────────────────────────────── -->
+    <div class="loading-paquetes" *ngIf="cargando">
+      <ion-spinner name="crescent" color="warning"></ion-spinner>
+      <p>Cargando paquetes...</p>
+    </div>
+
+    <!-- ── Orden pendiente de confirmar ───────────────────────── -->
+    <!-- Aparece cuando el usuario abrió PayPal y debe volver
+         a confirmar que completó el pago -->
+    <div class="orden-pendiente" *ngIf="ordenPendiente">
+      <div class="pendiente-header">
+        <ion-icon name="open-outline"></ion-icon>
+        <span>Pago en proceso</span>
+      </div>
+
+      <p class="pendiente-texto">
+        Completá el pago en la ventana de PayPal que se abrió.
+        Cuando termines, tocá el botón de abajo.
+      </p>
+
+      <div class="pendiente-detalle">
+        <span>{{ ordenPendiente.nombre }}</span>
+        <strong>{{ formatearNumero(ordenPendiente.monedas) }} monedas</strong>
+      </div>
+
+      <ion-button
+        expand="block"
+        class="btn-confirmar"
+        [disabled]="capturando"
+        (click)="confirmarPago()">
+        <ion-spinner *ngIf="capturando" name="crescent"></ion-spinner>
+        <span *ngIf="!capturando">
+          <ion-icon name="checkmark-circle" slot="start"></ion-icon>
+          Ya completé el pago
+        </span>
+      </ion-button>
+
+      <ion-button
+        expand="block"
+        fill="clear"
+        class="btn-cancelar-orden"
+        [disabled]="capturando"
+        (click)="cancelarOrden()">
+        Cancelar compra
+      </ion-button>
+    </div>
+
+    <!-- ── Grid de paquetes ───────────────────────────────────── -->
+    <div class="paquetes-grid" *ngIf="!cargando && !ordenPendiente">
+
+      <div
+        class="paquete-card"
+        *ngFor="let paquete of paquetes"
+        [ngClass]="getPaqueteClass(paquete)"
+        (click)="comprarPaquete(paquete)">
+
+        <!-- Brillo diagonal -->
+        <div class="card-shine"></div>
+
+        <!-- Badge "MÁS POPULAR" -->
+        <div class="badge-popular" *ngIf="paquete.EsPopular">
+          <ion-icon name="flame"></ion-icon>
+          POPULAR
+        </div>
+
+        <!-- Emoji del paquete -->
+        <div class="paquete-emoji">{{ paquete.Emoji }}</div>
+
+        <!-- Cantidad de monedas -->
+        <div class="paquete-monedas">
+          <ion-icon name="logo-bitcoin"></ion-icon>
+          <span>{{ formatearNumero(paquete.Monedas) }}</span>
+        </div>
+
+        <!-- Nombre -->
+        <div class="paquete-nombre">{{ paquete.Nombre }}</div>
+
+        <!-- Precio -->
+        <div class="paquete-precio">
+          <span class="precio-usd">${{ paquete.PrecioUSD }}</span>
+          <span class="precio-crc">₡{{ formatearNumero(paquete.PrecioCRC) }}</span>
+        </div>
+
+        <!-- Botón -->
+        <ion-button
+          expand="block"
+          class="btn-comprar"
+          [disabled]="procesando === paquete.PaqueteId">
+          <ion-spinner *ngIf="procesando === paquete.PaqueteId" name="crescent"></ion-spinner>
+          <span *ngIf="procesando !== paquete.PaqueteId">Comprar</span>
+        </ion-button>
+
+      </div>
+
+    </div>
+
+    <!-- ── Aviso de seguridad ─────────────────────────────────── -->
+    <div class="aviso-seguridad" *ngIf="!cargando && !ordenPendiente">
+      <ion-icon name="shield-checkmark-outline"></ion-icon>
+      <div>
+        <strong>Pago seguro con PayPal</strong>
+        <p>Tus datos de tarjeta nunca se almacenan en nuestros servidores.</p>
+      </div>
+    </div>
+
+  </div>
+
+</ion-content>

@@ -2,14 +2,16 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import {
-  IonContent, IonIcon, IonButton, IonSpinner, ToastController
+  IonContent, IonIcon, IonButton, IonSpinner,
+  ToastController, ViewWillEnter
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
-  storefront, storefrontOutline, logoBitcoin,
-  home, personOutline, cubeOutline
+  storefront, storefrontOutline, logoBitcoin, home,
+  personOutline, cubeOutline, checkmarkCircle, sparkles
 } from 'ionicons/icons';
 import { TiendaService } from '../../services/tienda.service';
+import { InventarioService } from '../../services/inventario.service';
 import { AuthService } from '../../services/auth';
 
 @Component({
@@ -19,44 +21,70 @@ import { AuthService } from '../../services/auth';
   standalone:  true,
   imports: [CommonModule, IonContent, IonIcon, IonButton, IonSpinner]
 })
-export class TiendaPage implements OnInit {
+export class TiendaPage implements OnInit, ViewWillEnter {
 
   // ── Variables ─────────────────────────────────────────────────
   usuario:          any     = null;
-  articulos:        any[]   = [];
+  articulos:        any[]   = [];   // catálogo de la categoría actual
+  misArticulos:     any[]   = [];   // lo que el jugador ya tiene
   cargando:         boolean = true;
-  comprando:        number | null = null; // ID del artículo comprándose (para el spinner)
-  tipoSeleccionado: number  = 1;           // 1=Ficha por defecto
+  comprando:        number | null = null;
+  equipando:        number | null = null;
+  tipoSeleccionado: number  = 1;    // 1=Ficha por defecto
 
-  // Definimos las 3 categorías según el orden de TiposArticulo en BD
+  // Las 3 categorías según el orden de TiposArticulo en la BD
   categorias = [
     { id: 1, nombre: 'Fichas',   emoji: '🔴' },
     { id: 2, nombre: 'Tableros', emoji: '🎲' },
-    { id: 3, nombre: 'Dados',    emoji: '⚀'  }
+    { id: 3, nombre: 'Dados',    emoji: '🎯' }
   ];
 
   constructor(
-    private tiendaService:   TiendaService,
-    private authService:     AuthService,
-    private router:          Router,
-    private toastController: ToastController
+    private tiendaService:     TiendaService,
+    private inventarioService: InventarioService,
+    private authService:       AuthService,
+    private router:            Router,
+    private toastController:   ToastController
   ) {
     addIcons({
-      storefront, storefrontOutline, logoBitcoin,
-      home, personOutline, cubeOutline
+      storefront, storefrontOutline, logoBitcoin, home,
+      personOutline, cubeOutline, checkmarkCircle, sparkles
     });
   }
 
   ngOnInit(): void {
     this.usuario = this.authService.getUsuario();
-    this.cargarArticulos();
+    this.cargarTodo();
   }
 
-  // ── cargarArticulos ──────────────────────────────────────────
-  // Trae los artículos de la categoría actualmente seleccionada
-  cargarArticulos(): void {
+  // Al volver de otra pantalla refrescamos el saldo
+  ionViewWillEnter(): void {
+    this.usuario = this.authService.getUsuario();
+  }
+
+  // ================================================================
+  // CARGAR CATÁLOGO + INVENTARIO
+  // ================================================================
+  // Primero traemos el inventario y después el catálogo, así
+  // cuando se renderiza la lista ya sabemos qué tiene comprado.
+  private cargarTodo(): void {
     this.cargando = true;
 
+    this.inventarioService.obtenerMisArticulos().subscribe({
+      next: (respuesta: any) => {
+        this.misArticulos = respuesta.ValorRetorno ?? [];
+        this.cargarArticulos();
+      },
+      error: () => {
+        // Si falla el inventario igual mostramos el catálogo,
+        // solo que sin marcar los comprados
+        this.misArticulos = [];
+        this.cargarArticulos();
+      }
+    });
+  }
+
+  private cargarArticulos(): void {
     this.tiendaService.listarPorTipo(this.tipoSeleccionado).subscribe({
       next: (respuesta: any) => {
         this.cargando  = false;
@@ -64,50 +92,97 @@ export class TiendaPage implements OnInit {
       },
       error: async () => {
         this.cargando = false;
-        const toast = await this.toastController.create({
-          message:  'No se pudieron cargar los artículos.',
-          duration: 2500,
-          color:    'danger',
-          position: 'top'
-        });
-        await toast.present();
+        await this.mostrarToast('No se pudieron cargar los artículos.', 'danger');
       }
     });
   }
 
   // ── cambiarCategoria ─────────────────────────────────────────
-  // Cambia el tab activo y recarga los artículos de esa categoría
   cambiarCategoria(tipId: number): void {
+    if (this.tipoSeleccionado === tipId) return;
+
     this.tipoSeleccionado = tipId;
+    this.cargando = true;
     this.cargarArticulos();
   }
 
-  // ── getEmojiCategoria ────────────────────────────────────────
-  // Retorna el emoji según la categoría seleccionada actualmente
-  getEmojiCategoria(): string {
-    const categoria = this.categorias.find(c => c.id === this.tipoSeleccionado);
-    return categoria?.emoji ?? '🎁';
+  // ================================================================
+  // ESTADO DE CADA ARTÍCULO
+  // ================================================================
+
+  // ¿El jugador ya tiene este artículo desbloqueado?
+  yaLoTiene(articulo: any): boolean {
+    return this.misArticulos.some(a => a.ArtId === articulo.ArtId);
   }
 
-  // ── getTipoClass ─────────────────────────────────────────────
-  // Retorna la clase CSS para el color del ícono según el tipo
-  getTipoClass(): string {
-    const clases: { [key: number]: string } = {
-      1: 'tipo-ficha',
-      2: 'tipo-tablero',
-      3: 'tipo-dado'
-    };
-    return clases[this.tipoSeleccionado] ?? '';
+  // ¿Lo tiene puesto ahora mismo?
+  estaEquipado(articulo: any): boolean {
+    const mio = this.misArticulos.find(a => a.ArtId === articulo.ArtId);
+    return mio?.EstaEquipado === true;
   }
 
-  // ── comprar ───────────────────────────────────────────────────
-  // Compra el artículo seleccionado — valida saldo en el backend
+  // ¿Le alcanzan las monedas?
+  puedeComprar(articulo: any): boolean {
+    return (this.usuario?.UsuMonedasTotal ?? 0) >= articulo.ArtPrecio;
+  }
+
+  // ================================================================
+  // SISTEMA DE RAREZA
+  // ================================================================
+  // La rareza se calcula según el precio. Le da jerarquía visual
+  // al catálogo: los artículos caros se ven claramente más
+  // valiosos que los baratos, aunque no sepas el precio.
+  getRareza(articulo: any): string {
+    const precio = articulo.ArtPrecio;
+
+    if (precio === 0)     return 'COMÚN';
+    if (precio <= 2500)   return 'RARO';
+    if (precio <= 6000)   return 'ÉPICO';
+    return 'LEGENDARIO';
+  }
+
+  getRarezaClass(articulo: any): string {
+    const precio = articulo.ArtPrecio;
+
+    if (precio === 0)     return 'rareza-comun';
+    if (precio <= 2500)   return 'rareza-raro';
+    if (precio <= 6000)   return 'rareza-epico';
+    return 'rareza-legendario';
+  }
+
+  // ================================================================
+  // IDENTIDAD VISUAL POR ARTÍCULO
+  // ================================================================
+  // Este es el arreglo más importante del rediseño. Antes TODOS
+  // los artículos se veían idénticos (la misma ficha roja sobre
+  // amarillo), así que el jugador no sabía qué estaba comprando.
+  //
+  // Ahora cada uno tiene su propio gradiente y efecto según su
+  // nombre: el dorado brilla, el cristal es translúcido, el neón
+  // tiene resplandor, etc.
+  getItemClass(articulo: any): string {
+    const nombre = (articulo.ArtNombre ?? '').toLowerCase();
+
+    if (nombre.includes('clásic') || nombre.includes('clasic')) return 'item-clasico';
+    if (nombre.includes('dorad'))                                return 'item-dorado';
+    if (nombre.includes('cristal'))                              return 'item-cristal';
+    if (nombre.includes('neón')   || nombre.includes('neon'))    return 'item-neon';
+    if (nombre.includes('diamante'))                             return 'item-diamante';
+    if (nombre.includes('madera'))                               return 'item-madera';
+    if (nombre.includes('galaxia'))                              return 'item-galaxia';
+
+    return 'item-clasico';
+  }
+
+  // ================================================================
+  // COMPRAR
+  // ================================================================
   comprar(articulo: any): void {
-    // Si es gratis (predeterminado) no hacemos nada
-    if (articulo.ArtEsPredeterminado) return;
+    // Los predeterminados no se compran, ya los tiene
+    if (this.yaLoTiene(articulo)) return;
 
-    // Verificamos saldo local antes de llamar a la API (UX rápida)
-    if (this.usuario.UsuMonedasTotal < articulo.ArtPrecio) {
+    // Validación local rápida — el backend igual la revalida
+    if (!this.puedeComprar(articulo)) {
       this.mostrarToast('Saldo insuficiente para comprar este artículo.', 'warning');
       return;
     }
@@ -118,9 +193,12 @@ export class TiendaPage implements OnInit {
       next: (respuesta: any) => {
         this.comprando = null;
 
-        // Actualizamos el saldo local con el valor real del backend
+        // Actualizamos el saldo con el valor real del backend
         this.usuario.UsuMonedasTotal = respuesta.monedas;
         localStorage.setItem('usuario', JSON.stringify(this.usuario));
+
+        // Refrescamos el inventario para que aparezca como comprado
+        this.refrescarInventario();
 
         this.mostrarToast(respuesta.mensaje, 'success');
       },
@@ -134,7 +212,43 @@ export class TiendaPage implements OnInit {
     });
   }
 
-  // ── mostrarToast ─────────────────────────────────────────────
+  // ================================================================
+  // EQUIPAR
+  // ================================================================
+  // Pone el artículo como activo en su categoría. El backend hace
+  // un upsert: si ya tenía otra ficha equipada, la reemplaza.
+  equipar(articulo: any): void {
+    if (this.estaEquipado(articulo)) return;
+
+    this.equipando = articulo.ArtId;
+
+    this.inventarioService.equiparArticulo(articulo.ArtId).subscribe({
+      next: () => {
+        this.equipando = null;
+        this.refrescarInventario();
+        this.mostrarToast(`${articulo.ArtNombre} equipado ✓`, 'success');
+      },
+      error: (error: any) => {
+        this.equipando = null;
+        const mensaje = error.error?.strMensajeRespuesta
+          ?? 'No se pudo equipar el artículo.';
+        this.mostrarToast(mensaje, 'danger');
+      }
+    });
+  }
+
+  // Recarga solo el inventario, sin volver a pedir el catálogo
+  private refrescarInventario(): void {
+    this.inventarioService.obtenerMisArticulos().subscribe({
+      next: (respuesta: any) => {
+        this.misArticulos = respuesta.ValorRetorno ?? [];
+      }
+    });
+  }
+
+  // ================================================================
+  // HELPERS
+  // ================================================================
   private async mostrarToast(mensaje: string, color: string): Promise<void> {
     const toast = await this.toastController.create({
       message:  mensaje,
@@ -145,7 +259,6 @@ export class TiendaPage implements OnInit {
     await toast.present();
   }
 
-  // ── Navegación ───────────────────────────────────────────────
   irAHome(): void {
     this.router.navigate(['/home']);
   }

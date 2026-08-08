@@ -40,5 +40,9 @@ export const routes: Routes = [
   {
     path: 'tablero',
     loadComponent: () => import('./pages/tablero/tablero.page').then( m => m.TableroPage)
+  },
+  {
+    path: 'tienda-monedas',
+    loadComponent: () => import('./pages/tienda-monedas/tienda-monedas.page').then( m => m.TiendaMonedasPage)
   }
 ];

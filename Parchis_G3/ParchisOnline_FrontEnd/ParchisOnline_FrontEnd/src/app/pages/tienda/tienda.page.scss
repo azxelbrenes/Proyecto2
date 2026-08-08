@@ -49,8 +49,8 @@
 
 // ── Tabs de categoría ────────────────────────────────────────────
 .tabs-categoria {
-  display: flex;
-  gap:     0.6rem;
+  display:       flex;
+  gap:           0.6rem;
   margin-bottom: 1.3rem;
 }
 
@@ -65,14 +65,15 @@
   border:          1px solid rgba(255, 255, 255, 0.1);
   border-radius:   14px;
   cursor:          pointer;
-  transition:      all 0.15s ease;
+  transition:      all 0.18s ease;
 
   .tab-emoji  { font-size: 1.5rem; }
   .tab-nombre { color: rgba(255,255,255,0.6); font-size: 0.75rem; font-weight: 700; }
 
   &.tab-activo {
-    background: linear-gradient(135deg, rgba(255,195,0,0.25), rgba(255,140,0,0.12));
-    border-color: rgba(255, 195, 0, 0.5);
+    background:   linear-gradient(135deg, rgba(255,195,0,0.28), rgba(255,140,0,0.14));
+    border-color: rgba(255, 195, 0, 0.55);
+    box-shadow:   0 4px 14px rgba(255, 195, 0, 0.18);
 
     .tab-nombre { color: #FFDD55; }
   }
@@ -95,85 +96,310 @@
   gap:                   0.9rem;
 }
 
+// ================================================================
+// TARJETA DE ARTÍCULO
+// ================================================================
 .articulo-card {
-  position:      relative;
-  background:    rgba(255, 255, 255, 0.06);
-  border:        1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 18px;
-  padding:       1.1rem 0.8rem 0.9rem;
-  display:       flex;
+  position:       relative;
+  overflow:       hidden;
+  background:     rgba(255, 255, 255, 0.055);
+  border:         2px solid rgba(255, 255, 255, 0.1);
+  border-radius:  18px;
+  padding:        1.5rem 0.8rem 0.9rem;
+  display:        flex;
   flex-direction: column;
-  align-items:   center;
-  text-align:    center;
-  box-shadow:    0 6px 16px rgba(0, 0, 0, 0.25);
+  align-items:    center;
+  text-align:     center;
+  box-shadow:     0 6px 16px rgba(0, 0, 0, 0.3);
+  transition:     transform 0.15s ease;
 
-  .badge-predeterminado {
-    position:      absolute;
-    top:           0.6rem;
-    right:         0.6rem;
-    background:    rgba(76, 175, 80, 0.2);
-    border:        1px solid rgba(76, 175, 80, 0.5);
-    color:         #7ADD82;
-    font-size:     0.62rem;
-    font-weight:   800;
-    padding:       0.15rem 0.5rem;
-    border-radius: 10px;
-    letter-spacing: 0.3px;
-  }
+  &:active { transform: scale(0.97); }
 
-  .articulo-icono {
-    width:           64px;
-    height:          64px;
-    display:         flex;
-    align-items:     center;
-    justify-content: center;
-    font-size:       2.2rem;
-    border-radius:   16px;
-    margin-bottom:   0.6rem;
-    box-shadow:      inset 0 2px 4px rgba(0,0,0,0.2);
-
-    &.tipo-ficha    { background: radial-gradient(circle at 30% 20%, #FFDE59, #C99A0E); }
-    &.tipo-tablero  { background: radial-gradient(circle at 30% 20%, #7FC4FF, #3A7FD5); }
-    &.tipo-dado     { background: radial-gradient(circle at 30% 20%, #D874EC, #932CAB); }
-  }
-
-  .articulo-nombre {
-    color:       white;
-    font-weight: 800;
-    font-size:   0.88rem;
-    margin-bottom: 0.2rem;
-  }
-
-  .articulo-desc {
-    color:       rgba(255, 255, 255, 0.5);
-    font-size:   0.68rem;
-    line-height: 1.3;
-    margin-bottom: 0.8rem;
-    min-height:  2rem;
-  }
-
-  .btn-comprar {
-    width:            100%;
-    --background:     linear-gradient(135deg, #FFC300, #E0A80E);
-    --color:          #1C1230;
-    --border-radius:  10px;
-    --box-shadow:     0 3px 10px rgba(255, 195, 0, 0.3);
-    font-weight:      800;
-    font-size:        0.8rem;
-    height:           2.4rem;
-    margin:            0;
-
-    ion-icon { font-size: 0.95rem; margin-right: 0.2rem; }
-
-    &.btn-gratis {
-      --background: rgba(255, 255, 255, 0.1);
-      --color:      rgba(255, 255, 255, 0.6);
-      --box-shadow: none;
-    }
+  // Brillo diagonal tipo carta plastificada
+  .card-shine {
+    position:   absolute;
+    top:        -60%;
+    left:       -25%;
+    width:      65%;
+    height:     220%;
+    background: linear-gradient(120deg, rgba(255,255,255,0.14) 0%, transparent 60%);
+    transform:  rotate(18deg);
+    pointer-events: none;
   }
 }
 
-// ── Navbar inferior (mismo estilo del home) ───────────────────────
+// ── Etiqueta de rareza ───────────────────────────────────────────
+.badge-rareza {
+  position:       absolute;
+  top:            0.5rem;
+  left:           0.5rem;
+  font-size:      0.55rem;
+  font-weight:    900;
+  letter-spacing: 0.8px;
+  padding:        0.18rem 0.45rem;
+  border-radius:  6px;
+  z-index:        2;
+}
+
+// ── Check de equipado ────────────────────────────────────────────
+.badge-equipado {
+  position:        absolute;
+  top:             0.45rem;
+  right:           0.5rem;
+  color:           #4CAF50;
+  font-size:       1.15rem;
+  z-index:         2;
+  filter:          drop-shadow(0 0 5px rgba(76, 175, 80, 0.6));
+}
+
+// ================================================================
+// SISTEMA DE RAREZA — borde y color según el precio
+// ================================================================
+// Le da jerarquía visual al catálogo: los artículos caros se ven
+// claramente más valiosos aunque no leas el precio.
+
+.rareza-comun {
+  border-color: rgba(150, 150, 160, 0.35);
+  .badge-rareza { background: rgba(150,150,160,0.25); color: #C0C0C8; }
+}
+
+.rareza-raro {
+  border-color: rgba(80, 150, 235, 0.5);
+  box-shadow:   0 6px 16px rgba(0,0,0,0.3), 0 0 14px rgba(80, 150, 235, 0.12);
+  .badge-rareza { background: rgba(80,150,235,0.28); color: #9CC5FF; }
+}
+
+.rareza-epico {
+  border-color: rgba(180, 90, 230, 0.55);
+  box-shadow:   0 6px 16px rgba(0,0,0,0.3), 0 0 18px rgba(180, 90, 230, 0.18);
+  .badge-rareza { background: rgba(180,90,230,0.3); color: #DDA8FF; }
+}
+
+.rareza-legendario {
+  border-color: rgba(255, 195, 0, 0.6);
+  box-shadow:   0 6px 16px rgba(0,0,0,0.3), 0 0 22px rgba(255, 195, 0, 0.25);
+  .badge-rareza { background: rgba(255,195,0,0.3); color: #FFE070; }
+}
+
+// Tarjeta del artículo actualmente equipado
+.card-equipada {
+  border-color: rgba(76, 175, 80, 0.6) !important;
+  box-shadow:   0 6px 16px rgba(0,0,0,0.3), 0 0 18px rgba(76, 175, 80, 0.22) !important;
+}
+
+// ================================================================
+// PREVIEW DEL ARTÍCULO
+// ================================================================
+.preview-wrapper {
+  width:           76px;
+  height:          76px;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  margin-bottom:   0.7rem;
+  z-index:         1;
+}
+
+.preview-item {
+  width:           68px;
+  height:          68px;
+  border-radius:   16px;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  position:        relative;
+  box-shadow:      inset 0 2px 6px rgba(0,0,0,0.3), 0 4px 10px rgba(0,0,0,0.35);
+}
+
+// ── Formas según la categoría ────────────────────────────────────
+
+// Ficha: círculo centrado
+.forma-ficha {
+  width:         34px;
+  height:        34px;
+  border-radius: 50%;
+  background:    currentColor;
+  box-shadow:    inset 0 -3px 6px rgba(0,0,0,0.3),
+                 inset 0  3px 6px rgba(255,255,255,0.25);
+}
+
+// Tablero: cuadrícula 2x2
+.forma-tablero {
+  display:               grid;
+  grid-template-columns: 1fr 1fr;
+  gap:                   3px;
+  width:                 38px;
+  height:                38px;
+
+  span {
+    background:    currentColor;
+    border-radius: 3px;
+    opacity:       0.9;
+
+    &:nth-child(1), &:nth-child(4) { opacity: 0.55; }
+  }
+}
+
+// Dado: cara con 5 puntos en cruz
+.forma-dado {
+  position:      relative;
+  width:         40px;
+  height:        40px;
+  background:    rgba(255,255,255,0.9);
+  border-radius: 8px;
+
+  i {
+    position:      absolute;
+    width:         7px;
+    height:        7px;
+    border-radius: 50%;
+    background:    currentColor;
+
+    &:nth-child(1) { top: 6px;  left: 6px;  }
+    &:nth-child(2) { top: 6px;  right: 6px; }
+    &:nth-child(3) { top: 50%;  left: 50%; transform: translate(-50%, -50%); }
+    &:nth-child(4) { bottom: 6px; left: 6px;  }
+    &:nth-child(5) { bottom: 6px; right: 6px; }
+  }
+}
+
+// ================================================================
+// IDENTIDAD VISUAL POR ARTÍCULO
+// ================================================================
+// Cada artículo tiene su propio fondo y color, así "Ficha Dorada"
+// se ve dorada de verdad y "Ficha Neón" brilla. Esto es lo que
+// arregla el problema de que todos se vieran idénticos.
+//
+// El "color" define el tono de la forma interna (círculo, puntos)
+// gracias a que las formas usan currentColor.
+
+.item-clasico {
+  background: linear-gradient(150deg, #8E9AAF, #5C6478);
+  color:      #E8ECF2;
+}
+
+.item-dorado {
+  background: linear-gradient(150deg, #FFDE59, #C99A0E);
+  color:      #FFF6D0;
+  box-shadow: inset 0 2px 6px rgba(255,255,255,0.35),
+              0 4px 12px rgba(255, 195, 0, 0.35);
+}
+
+.item-cristal {
+  background: linear-gradient(150deg, rgba(180,230,255,0.85), rgba(90,160,210,0.55));
+  color:      #FFFFFF;
+  border:     1px solid rgba(255,255,255,0.5);
+  box-shadow: inset 0 2px 8px rgba(255,255,255,0.5),
+              0 4px 12px rgba(120, 200, 255, 0.3);
+}
+
+.item-neon {
+  background: linear-gradient(150deg, #FF3DCE, #7B2FF7);
+  color:      #FFE9FB;
+  box-shadow: 0 0 16px rgba(255, 61, 206, 0.6),
+              inset 0 2px 6px rgba(255,255,255,0.25);
+}
+
+.item-diamante {
+  background: linear-gradient(150deg, #B9F2FF, #4FC3E8 55%, #2A8BB0);
+  color:      #FFFFFF;
+  box-shadow: 0 0 18px rgba(120, 230, 255, 0.5),
+              inset 0 2px 8px rgba(255,255,255,0.6);
+}
+
+.item-madera {
+  background: linear-gradient(150deg, #A9723E, #6B4423);
+  color:      #E8CFA8;
+}
+
+.item-galaxia {
+  background: radial-gradient(circle at 30% 25%, #6B4FD8, #2A1B5E 70%, #120A2E);
+  color:      #D8CBFF;
+  box-shadow: 0 0 16px rgba(120, 80, 220, 0.45),
+              inset 0 2px 8px rgba(255,255,255,0.15);
+}
+
+// ── Info del artículo ────────────────────────────────────────────
+.articulo-nombre {
+  color:       white;
+  font-weight: 800;
+  font-size:   0.87rem;
+  margin-bottom: 0.2rem;
+  z-index:     1;
+}
+
+.articulo-desc {
+  color:         rgba(255, 255, 255, 0.45);
+  font-size:     0.67rem;
+  line-height:   1.3;
+  margin-bottom: 0.75rem;
+  min-height:    1.8rem;
+  z-index:       1;
+}
+
+// ── Botones ──────────────────────────────────────────────────────
+.btn-comprar,
+.btn-equipar {
+  width:            100%;
+  --border-radius:  10px;
+  font-weight:      800;
+  font-size:        0.8rem;
+  height:           2.35rem;
+  margin:           0;
+  z-index:          1;
+}
+
+.btn-comprar {
+  --background: linear-gradient(135deg, #FFC300, #E0A80E);
+  --color:      #1C1230;
+  --box-shadow: 0 3px 10px rgba(255, 195, 0, 0.3);
+
+  .precio-wrapper {
+    display:     flex;
+    align-items: center;
+    gap:         0.25rem;
+  }
+
+  ion-icon { font-size: 0.95rem; }
+
+  // Sin saldo: se ve apagado pero sigue clickeable
+  // (el toast le explica por qué no puede comprarlo)
+  &.btn-sin-saldo {
+    --background: rgba(255, 255, 255, 0.08);
+    --color:      rgba(255, 255, 255, 0.4);
+    --box-shadow: none;
+  }
+}
+
+.btn-equipar {
+  --background: linear-gradient(135deg, #4A90D9, #2E5FA3);
+  --color:      white;
+  --box-shadow: 0 3px 10px rgba(74, 144, 217, 0.3);
+}
+
+// Estado "En uso" — no es botón, es solo indicador
+.btn-estado {
+  width:           100%;
+  height:          2.35rem;
+  border-radius:   10px;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  gap:             0.3rem;
+  font-size:       0.8rem;
+  font-weight:     800;
+  z-index:         1;
+}
+
+.btn-en-uso {
+  background: rgba(76, 175, 80, 0.15);
+  border:     1px solid rgba(76, 175, 80, 0.45);
+  color:      #81C784;
+
+  ion-icon { font-size: 1rem; }
+}
+
+// ── Navbar inferior ──────────────────────────────────────────────
 .navbar-inferior {
   position:        fixed;
   bottom:          0;

@@ -36,39 +36,83 @@
     <!-- ── Grid de artículos ──────────────────────────────────── -->
     <div class="articulos-grid" *ngIf="!cargando && articulos.length > 0">
 
-      <div class="articulo-card" *ngFor="let articulo of articulos">
+      <div
+        class="articulo-card"
+        *ngFor="let articulo of articulos"
+        [ngClass]="getRarezaClass(articulo)"
+        [class.card-equipada]="estaEquipado(articulo)">
 
-        <!-- Badge predeterminado -->
-        <div class="badge-predeterminado" *ngIf="articulo.ArtEsPredeterminado">
-          Gratis
+        <!-- Brillo diagonal tipo carta plastificada -->
+        <div class="card-shine"></div>
+
+        <!-- Etiqueta de rareza -->
+        <div class="badge-rareza">{{ getRareza(articulo) }}</div>
+
+        <!-- Check si está equipado ahora mismo -->
+        <div class="badge-equipado" *ngIf="estaEquipado(articulo)">
+          <ion-icon name="checkmark-circle"></ion-icon>
         </div>
 
-        <!-- Icono grande del artículo -->
-        <div class="articulo-icono" [ngClass]="getTipoClass()">
-          {{ getEmojiCategoria() }}
+        <!-- ── Preview visual del artículo ─────────────────── -->
+        <!-- Cada artículo tiene su propio gradiente según su
+             nombre, así se distinguen claramente entre sí -->
+        <div class="preview-wrapper">
+          <div class="preview-item" [ngClass]="getItemClass(articulo)">
+
+            <!-- Ficha: círculo -->
+            <div class="forma-ficha" *ngIf="tipoSeleccionado === 1"></div>
+
+            <!-- Tablero: cuadrícula 2x2 -->
+            <div class="forma-tablero" *ngIf="tipoSeleccionado === 2">
+              <span></span><span></span>
+              <span></span><span></span>
+            </div>
+
+            <!-- Dado: cara con 5 puntos -->
+            <div class="forma-dado" *ngIf="tipoSeleccionado === 3">
+              <i></i><i></i><i></i><i></i><i></i>
+            </div>
+
+          </div>
         </div>
 
-        <!-- Nombre y descripción -->
+        <!-- ── Info del artículo ───────────────────────────── -->
         <div class="articulo-nombre">{{ articulo.ArtNombre }}</div>
         <div class="articulo-desc">{{ articulo.ArtDescripcion }}</div>
 
-        <!-- Precio o botón de comprar -->
+        <!-- ── Botones según el estado ─────────────────────── -->
+
+        <!-- Ya equipado: solo mostramos el estado -->
+        <div class="btn-estado btn-en-uso" *ngIf="estaEquipado(articulo)">
+          <ion-icon name="checkmark-circle"></ion-icon>
+          En uso
+        </div>
+
+        <!-- Lo tiene pero no equipado: botón para equipar -->
         <ion-button
+          *ngIf="yaLoTiene(articulo) && !estaEquipado(articulo)"
+          expand="block"
+          class="btn-equipar"
+          [disabled]="equipando === articulo.ArtId"
+          (click)="equipar(articulo)">
+          <ion-spinner *ngIf="equipando === articulo.ArtId" name="crescent"></ion-spinner>
+          <span *ngIf="equipando !== articulo.ArtId">Equipar</span>
+        </ion-button>
+
+        <!-- No lo tiene: botón de compra con el precio -->
+        <ion-button
+          *ngIf="!yaLoTiene(articulo)"
           expand="block"
           class="btn-comprar"
-          [class.btn-gratis]="articulo.ArtPrecio === 0"
+          [class.btn-sin-saldo]="!puedeComprar(articulo)"
           [disabled]="comprando === articulo.ArtId"
           (click)="comprar(articulo)">
 
           <ion-spinner *ngIf="comprando === articulo.ArtId" name="crescent"></ion-spinner>
 
-          <span *ngIf="comprando !== articulo.ArtId && articulo.ArtPrecio > 0">
+          <span *ngIf="comprando !== articulo.ArtId" class="precio-wrapper">
             <ion-icon name="logo-bitcoin"></ion-icon>
             {{ articulo.ArtPrecio | number }}
-          </span>
-
-          <span *ngIf="comprando !== articulo.ArtId && articulo.ArtPrecio === 0">
-            Incluido
           </span>
         </ion-button>
 
