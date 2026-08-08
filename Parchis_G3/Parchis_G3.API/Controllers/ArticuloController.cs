@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Parchis_G3.API.Services;
-
 using Parchis_G3.Dominio.EntidadesTipadas;
+using Parchis_G3.Dominio.InterfacesAD;
 using Parchis_G3.Dominio.InterfacesLN;
 
 namespace Parchis_G3.API.Controllers;
@@ -15,6 +15,8 @@ public class ArticuloController : ControllerBase
     private readonly IArticuloLN _articuloLN;
     private readonly IUsuarioLN _usuarioLN;
     private readonly IUsuarioArticuloLN _usuarioArticuloLN;
+    private readonly IInventarioLN _inventarioLN;
+    private readonly IUnidadTrabajoEF _unidadTrabajo;
     private readonly JwtService _jwtService;
     private readonly ILogger<ArticuloController> _logger;
 
@@ -22,12 +24,16 @@ public class ArticuloController : ControllerBase
         IArticuloLN articuloLN,
         IUsuarioLN usuarioLN,
         IUsuarioArticuloLN usuarioArticuloLN,
+        IInventarioLN inventarioLN,
+        IUnidadTrabajoEF unidadTrabajo,
         JwtService jwtService,
         ILogger<ArticuloController> logger)
     {
         _articuloLN = articuloLN;
         _usuarioLN = usuarioLN;
         _usuarioArticuloLN = usuarioArticuloLN;
+        _inventarioLN = inventarioLN;
+        _unidadTrabajo = unidadTrabajo;
         _jwtService = jwtService;
         _logger = logger;
     }
@@ -72,7 +78,7 @@ public class ArticuloController : ControllerBase
 
     // ── GET /api/articulo/tipo/{tipId} ───────────────────────────
     // Filtra artículos por tipo: 1=Ficha, 2=Tablero, 3=Dado.
-    // Android lo usa para mostrar las pestañas de la tienda.
+    // La tienda lo usa para las pestañas de categoría.
     [HttpGet("tipo/{tipId}")]
     public IActionResult ObtenerPorTipo(int tipId)
     {
@@ -94,7 +100,8 @@ public class ArticuloController : ControllerBase
 
     // ── POST /api/articulo/comprar ───────────────────────────────
     // El jugador compra un artículo de la tienda con sus monedas.
-    // El servidor verifica el precio real — nunca el del cliente.
+    // El servidor verifica el precio REAL desde la BD — nunca
+    // confía en el precio que manda el cliente.
     [HttpPost("comprar")]
     public IActionResult Comprar([FromBody] TArticulo articulo)
     {
@@ -103,6 +110,19 @@ public class ArticuloController : ControllerBase
             var usuId = _jwtService.ObtenerUsuIdDesdeToken(User);
             if (usuId <= 0)
                 return Unauthorized("Token inválido.");
+
+            // ── Evitar compras duplicadas ────────────────────────
+            // Sin esta validación, comprar dos veces el mismo
+            // artículo rompe el constraint UQ_UArt_UsuarioArticulo
+            // de la base de datos y devuelve un error de SQL feo
+            // en vez de un mensaje claro para el usuario.
+            if (_inventarioLN.YaLoTiene(usuId, articulo.ArtId, _unidadTrabajo))
+            {
+                return BadRequest(new
+                {
+                    mensaje = "Ya tenés este artículo en tu inventario."
+                });
+            }
 
             // Precio real desde BD — el cliente no puede alterarlo
             var artReal = _articuloLN.Buscar(new TArticulo { ArtId = articulo.ArtId });

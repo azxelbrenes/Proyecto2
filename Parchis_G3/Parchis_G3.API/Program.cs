@@ -50,6 +50,9 @@ builder.Services.AddScoped<IHistorialPartidaLN, HistorialPartidaLN>();
 builder.Services.AddScoped<IMensajesChatLN, MensajesChatLN>();
 builder.Services.AddScoped<IFilaEsperaLN, FilaEsperaLN>();
 builder.Services.AddScoped<ISesionesActivaLN, SesionesActivaLN>();
+builder.Services.AddScoped<IInventarioLN, InventarioLN>();
+builder.Services.AddScoped<IRankingLN, RankingLN>();
+builder.Services.AddScoped<IRecompensaLN, RecompensaLN>();
 
 // -- Seguridad (Scoped) --
 // NO es Singleton porque no guarda estado en memoria: los intentos
