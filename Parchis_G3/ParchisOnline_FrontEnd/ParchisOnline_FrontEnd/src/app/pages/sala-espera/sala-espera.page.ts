@@ -267,21 +267,27 @@ export class SalaEsperaPage implements OnInit, OnDestroy {
 
   
   // CANCELAR Y RECUPERAR MONEDAS
-  async cancelarEspera(): Promise<void> {
+   async cancelarEspera(): Promise<void> {
     const alert = await this.alertController.create({
-      header:  'Salir de la sala',
-      message: 'Se te devolverán las monedas de entrada. ¿Confirmás?',
+      cssClass: 'alert-parchis',
+      header:   'Salir de la sala',
+      message:  'Se te devolverán las monedas de entrada.\n\n¿Confirmás?',
       buttons: [
-        { text: 'Seguir esperando', role: 'cancel' },
+        {
+          text: 'Seguir esperando',
+          role: 'cancel',
+          cssClass: 'btn-cancelar'
+        },
         {
           text: 'Salir',
-          role: 'destructive',
+          cssClass: 'btn-peligro',
           handler: () => this.confirmarCancelacion()
         }
       ]
     });
     await alert.present();
   }
+
 
   private confirmarCancelacion(): void {
     this.pollingSub?.unsubscribe();

@@ -18,9 +18,9 @@ public class SeguridadLN : ISeguridadLN
     // seguir contándolos — probablemente solo olvidó la contraseña.
     private const int MINUTOS_RESET_CONTADOR = 30;
 
-    // ================================================================
+    
     // VERIFICAR SI LA CUENTA ESTÁ BLOQUEADA
-    // ================================================================
+   
     public string? VerificarBloqueoLogin(string correo, IUnidadTrabajoEF unidadTrabajo)
     {
         try
@@ -130,9 +130,9 @@ public class SeguridadLN : ISeguridadLN
         }
     }
 
-    // ================================================================
+    
     // REGISTRAR LOGIN EXITOSO
-    // ================================================================
+ 
     public void RegistrarLoginExitoso(int usuId, string correo, string? ip, IUnidadTrabajoEF unidadTrabajo)
     {
         try
@@ -157,9 +157,9 @@ public class SeguridadLN : ISeguridadLN
         }
     }
 
-    // ================================================================
+    
     // REGISTRAR EVENTO DE AUDITORÍA
-    // ================================================================
+ 
     public void RegistrarEvento(string evento, string? correo, int? usuId, string? ip, string? detalle, IUnidadTrabajoEF unidadTrabajo)
     {
         try

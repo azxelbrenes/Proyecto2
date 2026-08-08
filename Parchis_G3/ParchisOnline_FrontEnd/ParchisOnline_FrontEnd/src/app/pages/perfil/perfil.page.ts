@@ -130,15 +130,28 @@ export class PerfilPage implements OnInit {
   // ── cerrarSesion ─────────────────────────────────────────────
   async cerrarSesion(): Promise<void> {
     const alert = await this.alertController.create({
-      header:  'Cerrar sesión',
-      message: '¿Estás seguro que querés cerrar sesión?',
+      cssClass: 'alert-parchis',
+      header:   'Cerrar sesión',
+      message:  '¿Estás seguro que querés cerrar sesión?',
       buttons: [
-        { text: 'Cancelar', role: 'cancel' },
+        {
+          text: 'Cancelar',
+          role: 'cancel',
+          cssClass: 'btn-cancelar'
+        },
         {
           text: 'Cerrar sesión',
-          role: 'destructive',
+          cssClass: 'btn-peligro',
           handler: () => {
+            // Limpiamos la sesión
             this.authService.logout();
+
+            // Verificación extra: por si el logout del servicio falla,
+            // nos aseguramos de que no quede nada en localStorage.
+            // Sin esto, el guard seguiría dejando pasar al usuario.
+            localStorage.removeItem('token');
+            localStorage.removeItem('usuario');
+
             this.router.navigate(['/login'], { replaceUrl: true });
           }
         }
@@ -146,6 +159,7 @@ export class PerfilPage implements OnInit {
     });
     await alert.present();
   }
+
 
   // ── mostrarToast ─────────────────────────────────────────────
   private async mostrarToast(mensaje: string, color: string): Promise<void> {
