@@ -1,3 +1,22 @@
+// ================================================================
+// tienda.page.ts — Tienda con inventario, rareza y acceso a monedas
+// ================================================================
+// ¿QUÉ HACE ESTA PANTALLA?
+//
+// 1. Carga el CATÁLOGO de artículos junto con el INVENTARIO del
+//    jugador, así puede mostrar "En uso" o "Equipar" en vez del
+//    precio cuando ya tiene el artículo.
+//
+// 2. Cada artículo tiene identidad visual propia según su nombre
+//    (dorado brilla, cristal es translúcido, neón tiene glow),
+//    en vez de que todos se vean iguales.
+//
+// 3. Sistema de rareza calculado por precio, que le da jerarquía
+//    visual al catálogo.
+//
+// 4. Banner de acceso a la tienda de monedas con dinero real.
+// ================================================================
+
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
@@ -8,7 +27,8 @@ import {
 import { addIcons } from 'ionicons';
 import {
   storefront, storefrontOutline, logoBitcoin, home,
-  personOutline, cubeOutline, checkmarkCircle, sparkles
+  personOutline, cubeOutline, checkmarkCircle, sparkles,
+  chevronForward
 } from 'ionicons/icons';
 import { TiendaService } from '../../services/tienda.service';
 import { InventarioService } from '../../services/inventario.service';
@@ -48,7 +68,8 @@ export class TiendaPage implements OnInit, ViewWillEnter {
   ) {
     addIcons({
       storefront, storefrontOutline, logoBitcoin, home,
-      personOutline, cubeOutline, checkmarkCircle, sparkles
+      personOutline, cubeOutline, checkmarkCircle, sparkles,
+      chevronForward
     });
   }
 
@@ -57,9 +78,11 @@ export class TiendaPage implements OnInit, ViewWillEnter {
     this.cargarTodo();
   }
 
-  // Al volver de otra pantalla refrescamos el saldo
+  // Al volver de otra pantalla (por ejemplo de comprar monedas)
+  // refrescamos el saldo y el inventario
   ionViewWillEnter(): void {
     this.usuario = this.authService.getUsuario();
+    this.refrescarInventario();
   }
 
   // ================================================================
@@ -131,22 +154,22 @@ export class TiendaPage implements OnInit, ViewWillEnter {
   // ================================================================
   // La rareza se calcula según el precio. Le da jerarquía visual
   // al catálogo: los artículos caros se ven claramente más
-  // valiosos que los baratos, aunque no sepas el precio.
+  // valiosos que los baratos, aunque no leas el precio.
   getRareza(articulo: any): string {
     const precio = articulo.ArtPrecio;
 
-    if (precio === 0)     return 'COMÚN';
-    if (precio <= 2500)   return 'RARO';
-    if (precio <= 6000)   return 'ÉPICO';
+    if (precio === 0)   return 'COMÚN';
+    if (precio <= 2500) return 'RARO';
+    if (precio <= 6000) return 'ÉPICO';
     return 'LEGENDARIO';
   }
 
   getRarezaClass(articulo: any): string {
     const precio = articulo.ArtPrecio;
 
-    if (precio === 0)     return 'rareza-comun';
-    if (precio <= 2500)   return 'rareza-raro';
-    if (precio <= 6000)   return 'rareza-epico';
+    if (precio === 0)   return 'rareza-comun';
+    if (precio <= 2500) return 'rareza-raro';
+    if (precio <= 6000) return 'rareza-epico';
     return 'rareza-legendario';
   }
 
@@ -181,9 +204,13 @@ export class TiendaPage implements OnInit, ViewWillEnter {
     // Los predeterminados no se compran, ya los tiene
     if (this.yaLoTiene(articulo)) return;
 
-    // Validación local rápida — el backend igual la revalida
+    // Validación local rápida — el backend igual la revalida.
+    // Si no le alcanza, le sugerimos ir a comprar monedas.
     if (!this.puedeComprar(articulo)) {
-      this.mostrarToast('Saldo insuficiente para comprar este artículo.', 'warning');
+      this.mostrarToast(
+        'Saldo insuficiente. Podés comprar monedas con dinero real.',
+        'warning'
+      );
       return;
     }
 
@@ -257,6 +284,13 @@ export class TiendaPage implements OnInit, ViewWillEnter {
       position: 'top'
     });
     await toast.present();
+  }
+
+  // ── Navegación ───────────────────────────────────────────────
+
+  // Lleva a la pantalla de compra de monedas con dinero real
+  irATiendaMonedas(): void {
+    this.router.navigate(['/tienda-monedas']);
   }
 
   irAHome(): void {

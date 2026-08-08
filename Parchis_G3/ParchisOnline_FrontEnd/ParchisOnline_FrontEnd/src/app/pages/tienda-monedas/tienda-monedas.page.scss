@@ -1,14 +1,14 @@
 .monedas-content {
   --background: radial-gradient(circle at top, #3A2465 0%, #1C1230 45%, #0D0818 100%);
 }
-
+ 
 .monedas-container {
   padding:    1rem 1.1rem 2rem;
   min-height: 100vh;
   max-width:  480px;
   margin:     0 auto;
 }
-
+ 
 // ── Header ───────────────────────────────────────────────────────
 .header-bar {
   display:         flex;
@@ -16,15 +16,15 @@
   align-items:     center;
   margin-bottom:   1.2rem;
 }
-
+ 
 .btn-volver {
-  --color:   rgba(255, 255, 255, 0.7);
+  --color:         rgba(255, 255, 255, 0.7);
   --padding-start: 0;
-  font-size: 0.9rem;
-
+  font-size:       0.9rem;
+ 
   &:hover { --color: #FFC300; }
 }
-
+ 
 .monedas-badge {
   display:        flex;
   align-items:    center;
@@ -33,21 +33,22 @@
   border:         1px solid rgba(255, 195, 0, 0.5);
   border-radius:  20px;
   padding:        0.4rem 0.95rem;
-
+ 
   ion-icon { color: #FFC300; font-size: 1.15rem; }
   span     { color: #FFDD55; font-weight: 800; font-size: 0.95rem; }
 }
-
+ 
 // ── Título ───────────────────────────────────────────────────────
 .titulo-section {
   text-align:    center;
   margin-bottom: 1.6rem;
-
+ 
   .titulo-icono {
     font-size:     3rem;
     margin-bottom: 0.3rem;
+    filter:        drop-shadow(0 4px 8px rgba(0,0,0,0.35));
   }
-
+ 
   .titulo {
     color:          #FFE070;
     font-size:      1.7rem;
@@ -56,14 +57,14 @@
     letter-spacing: 0.5px;
     text-shadow:    0 0 20px rgba(255, 195, 0, 0.35);
   }
-
+ 
   .subtitulo {
     color:     rgba(255, 255, 255, 0.5);
     font-size: 0.85rem;
     margin:    0.3rem 0 0;
   }
 }
-
+ 
 // ── Loading ──────────────────────────────────────────────────────
 .loading-paquetes {
   text-align: center;
@@ -71,19 +72,33 @@
   color:      rgba(255, 255, 255, 0.55);
   p { margin-top: 0.8rem; font-size: 0.9rem; }
 }
-
+ 
 // ================================================================
 // ORDEN PENDIENTE
 // ================================================================
-// Aparece cuando el usuario ya abrió PayPal y debe volver
-// a confirmar que completó el pago.
+// Aparece cuando el usuario ya abrió PayPal. Es lo PRIMERO que ve
+// al volver a la app, con pasos claros de qué hacer.
+//
+// Antes el usuario volvía de PayPal y solo veía los 4 paquetes,
+// sin saber que tenía que confirmar el pago.
 .orden-pendiente {
   background:    rgba(255, 195, 0, 0.08);
   border:        2px solid rgba(255, 195, 0, 0.35);
   border-radius: 18px;
   padding:       1.3rem 1.1rem;
   margin-bottom: 1.2rem;
-
+  transition:    all 0.3s ease;
+ 
+  // Cuando detectamos que volvió de PayPal, la caja cambia a
+  // verde y pulsa para dirigir su mirada al botón de confirmar
+  &.pendiente-activa {
+    border-color: rgba(76, 175, 80, 0.6);
+    background:   rgba(76, 175, 80, 0.1);
+    animation:    pulsoAtencion 2s ease-in-out infinite;
+ 
+    .pendiente-header { color: #A5D6A7; }
+  }
+ 
   .pendiente-header {
     display:       flex;
     align-items:   center;
@@ -91,32 +106,62 @@
     color:         #FFDD55;
     font-weight:   800;
     font-size:     1rem;
-    margin-bottom: 0.6rem;
-
+    margin-bottom: 0.8rem;
+    transition:    color 0.3s ease;
+ 
     ion-icon { font-size: 1.3rem; }
   }
-
-  .pendiente-texto {
-    color:       rgba(255, 255, 255, 0.65);
-    font-size:   0.85rem;
-    line-height: 1.5;
-    margin:      0 0 1rem;
-  }
-
+ 
   .pendiente-detalle {
     display:         flex;
     justify-content: space-between;
     align-items:     center;
     background:      rgba(0, 0, 0, 0.25);
     border-radius:   10px;
-    padding:         0.65rem 0.9rem;
+    padding:         0.7rem 0.9rem;
     margin-bottom:   1rem;
-
+ 
     span   { color: rgba(255,255,255,0.6); font-size: 0.85rem; }
     strong { color: #FFDD55; font-size: 0.95rem; font-weight: 800; }
   }
 }
-
+ 
+// ── Pasos numerados ──────────────────────────────────────────────
+.pendiente-pasos {
+  margin-bottom: 1.1rem;
+ 
+  .paso {
+    display:       flex;
+    align-items:   center;
+    gap:           0.6rem;
+    margin-bottom: 0.5rem;
+ 
+    &:last-child { margin-bottom: 0; }
+ 
+    .paso-num {
+      width:           22px;
+      height:          22px;
+      border-radius:   50%;
+      background:      rgba(255, 195, 0, 0.25);
+      border:          1px solid rgba(255, 195, 0, 0.5);
+      color:           #FFDD55;
+      font-size:       0.7rem;
+      font-weight:     900;
+      display:         flex;
+      align-items:     center;
+      justify-content: center;
+      flex-shrink:     0;
+    }
+ 
+    .paso-texto {
+      color:       rgba(255, 255, 255, 0.7);
+      font-size:   0.82rem;
+      line-height: 1.4;
+    }
+  }
+}
+ 
+// ── Botones de la orden pendiente ────────────────────────────────
 .btn-confirmar {
   --background:    linear-gradient(135deg, #4CAF50, #388E3C);
   --color:         white;
@@ -124,15 +169,37 @@
   --box-shadow:    0 4px 14px rgba(76, 175, 80, 0.35);
   font-weight:     800;
   height:          3rem;
-  margin-bottom:   0.4rem;
+  margin-bottom:   0.5rem;
+ 
+  .btn-contenido {
+    display:     flex;
+    align-items: center;
+    gap:         0.4rem;
+  }
 }
-
+ 
+.btn-reabrir {
+  --border-radius: 12px;
+  --color:         rgba(255, 255, 255, 0.7);
+  --border-color:  rgba(255, 255, 255, 0.25);
+  font-size:       0.82rem;
+  font-weight:     600;
+  height:          2.6rem;
+  margin-bottom:   0.3rem;
+}
+ 
 .btn-cancelar-orden {
-  --color:   rgba(255, 255, 255, 0.45);
-  font-size: 0.82rem;
-  height:    2.2rem;
+  --color:   rgba(255, 255, 255, 0.4);
+  font-size: 0.78rem;
+  height:    2rem;
 }
-
+ 
+// Pulsa suavemente para dirigir la atención al botón verde
+@keyframes pulsoAtencion {
+  0%, 100% { box-shadow: 0 0 0 0  rgba(76, 175, 80, 0.4); }
+  50%      { box-shadow: 0 0 0 8px rgba(76, 175, 80, 0);   }
+}
+ 
 // ================================================================
 // GRID DE PAQUETES
 // ================================================================
@@ -142,7 +209,7 @@
   gap:                   0.9rem;
   margin-bottom:         1.3rem;
 }
-
+ 
 .paquete-card {
   position:       relative;
   overflow:       hidden;
@@ -156,22 +223,22 @@
   border:         2px solid rgba(255, 255, 255, 0.12);
   box-shadow:     0 6px 18px rgba(0, 0, 0, 0.35);
   transition:     transform 0.15s ease;
-
+ 
   &:active { transform: scale(0.97); }
-
-  // Brillo diagonal tipo carta
+ 
+  // Brillo diagonal tipo carta plastificada
   .card-shine {
-    position:   absolute;
-    top:        -60%;
-    left:       -25%;
-    width:      65%;
-    height:     220%;
-    background: linear-gradient(120deg, rgba(255,255,255,0.16) 0%, transparent 60%);
-    transform:  rotate(18deg);
+    position:       absolute;
+    top:            -60%;
+    left:           -25%;
+    width:          65%;
+    height:         220%;
+    background:     linear-gradient(120deg, rgba(255,255,255,0.16) 0%, transparent 60%);
+    transform:      rotate(18deg);
     pointer-events: none;
   }
 }
-
+ 
 // ── Badge "POPULAR" ──────────────────────────────────────────────
 .badge-popular {
   position:       absolute;
@@ -189,10 +256,10 @@
   border-radius:  8px;
   z-index:        2;
   box-shadow:     0 2px 8px rgba(230, 57, 70, 0.4);
-
+ 
   ion-icon { font-size: 0.7rem; }
 }
-
+ 
 // ── Contenido del paquete ────────────────────────────────────────
 .paquete-emoji {
   font-size:     2.6rem;
@@ -200,7 +267,7 @@
   z-index:       1;
   filter:        drop-shadow(0 4px 6px rgba(0,0,0,0.3));
 }
-
+ 
 .paquete-monedas {
   display:       flex;
   align-items:   center;
@@ -211,10 +278,10 @@
   margin-bottom: 0.2rem;
   z-index:       1;
   text-shadow:   0 2px 4px rgba(0,0,0,0.35);
-
+ 
   ion-icon { font-size: 1rem; color: #FFC300; }
 }
-
+ 
 .paquete-nombre {
   color:         rgba(255, 255, 255, 0.75);
   font-size:     0.72rem;
@@ -222,84 +289,92 @@
   margin-bottom: 0.6rem;
   z-index:       1;
 }
-
+ 
 .paquete-precio {
   display:        flex;
   flex-direction: column;
   align-items:    center;
   margin-bottom:  0.8rem;
   z-index:        1;
-
+ 
   .precio-usd {
     color:       white;
     font-size:   1.15rem;
     font-weight: 900;
     text-shadow: 0 2px 4px rgba(0,0,0,0.3);
   }
-
+ 
   .precio-crc {
-    color:     rgba(255, 255, 255, 0.5);
-    font-size: 0.7rem;
+    color:      rgba(255, 255, 255, 0.5);
+    font-size:  0.7rem;
     margin-top: 0.1rem;
   }
 }
-
+ 
 .btn-comprar {
-  width:            100%;
-  --background:     rgba(255, 255, 255, 0.18);
-  --color:          white;
-  --border-radius:  10px;
-  --box-shadow:     none;
-  border:           1px solid rgba(255, 255, 255, 0.3);
-  border-radius:    10px;
-  font-weight:      800;
-  font-size:        0.8rem;
-  height:           2.3rem;
-  margin:           0;
-  z-index:          1;
+  width:           100%;
+  --background:    rgba(255, 255, 255, 0.18);
+  --color:         white;
+  --border-radius: 10px;
+  --box-shadow:    none;
+  border:          1px solid rgba(255, 255, 255, 0.3);
+  border-radius:   10px;
+  font-weight:     800;
+  font-size:       0.8rem;
+  height:          2.3rem;
+  margin:          0;
+  z-index:         1;
 }
-
+ 
 // ================================================================
 // COLORES POR PAQUETE
 // ================================================================
-// Cada paquete tiene un color propio, y los más caros se ven
-// más vistosos — eso comunica valor sin necesidad de leer el precio.
-
+// Cada paquete tiene un color propio, y los más caros se ven más
+// vistosos — eso comunica valor sin necesidad de leer el precio.
+ 
 .paquete-pequeno {
   background: linear-gradient(150deg, #6B8E9E, #3D5A68 70%, #2A3F4A);
-  background: linear-gradient(150deg, #6B8E9E, #3D5A68 70%, #2A3F4A)
 }
-
+ 
 .paquete-mediano {
   background:   linear-gradient(150deg, #4A90D9, #2E5FA3 70%, #1D4A8C);
   border-color: rgba(120, 180, 255, 0.4);
   box-shadow:   0 6px 18px rgba(0,0,0,0.35), 0 0 18px rgba(74, 144, 217, 0.2);
 }
-
+ 
 .paquete-grande {
   background:   linear-gradient(150deg, #B347C9, #7E2C93 70%, #571D67);
   border-color: rgba(200, 120, 235, 0.45);
   box-shadow:   0 6px 18px rgba(0,0,0,0.35), 0 0 20px rgba(179, 71, 201, 0.25);
 }
-
+ 
+// El premium es dorado, así que el texto va oscuro para
+// que se lea bien sobre el fondo claro
 .paquete-premium {
   background:   linear-gradient(150deg, #FFD84D, #E0A80E 65%, #9A7300);
   border-color: rgba(255, 220, 100, 0.6);
   box-shadow:   0 6px 18px rgba(0,0,0,0.35), 0 0 26px rgba(255, 195, 0, 0.35);
-
+ 
   .paquete-nombre { color: rgba(60, 40, 0, 0.75); }
-  .paquete-monedas { color: #4A3200; text-shadow: none;
-    ion-icon { color: #6B4A00; } }
-  .paquete-precio .precio-usd { color: #3A2800; text-shadow: none; }
-  .paquete-precio .precio-crc { color: rgba(60, 40, 0, 0.6); }
-
+ 
+  .paquete-monedas {
+    color:       #4A3200;
+    text-shadow: none;
+    ion-icon { color: #6B4A00; }
+  }
+ 
+  .paquete-precio {
+    .precio-usd { color: #3A2800; text-shadow: none; }
+    .precio-crc { color: rgba(60, 40, 0, 0.6); }
+  }
+ 
   .btn-comprar {
     --background: rgba(60, 40, 0, 0.25);
     --color:      #FFF4C9;
     border-color: rgba(60, 40, 0, 0.35);
   }
 }
-
+ 
 // ── Aviso de seguridad ───────────────────────────────────────────
 .aviso-seguridad {
   display:        flex;
@@ -309,21 +384,21 @@
   border:         1px solid rgba(76, 175, 80, 0.25);
   border-radius:  12px;
   padding:        0.8rem 1rem;
-
+ 
   ion-icon {
-    color:      #81C784;
-    font-size:  1.4rem;
+    color:       #81C784;
+    font-size:   1.4rem;
     flex-shrink: 0;
-    margin-top: 0.1rem;
+    margin-top:  0.1rem;
   }
-
+ 
   strong {
-    color:       #A5D6A7;
-    font-size:   0.85rem;
-    display:     block;
+    color:         #A5D6A7;
+    font-size:     0.85rem;
+    display:       block;
     margin-bottom: 0.15rem;
   }
-
+ 
   p {
     color:       rgba(255, 255, 255, 0.5);
     font-size:   0.75rem;

@@ -26,23 +26,36 @@ export const routes: Routes = [
   {
     path: 'tienda',
     canActivate: [authGuard],
-    loadComponent: () => import('./pages/tienda/tienda.page').then( m => m.TiendaPage)
+    loadComponent: () =>
+      import('./pages/tienda/tienda.page').then(m => m.TiendaPage)
   },
   {
     path: 'perfil',
     canActivate: [authGuard],
-    loadComponent: () => import('./pages/perfil/perfil.page').then( m => m.PerfilPage)
+    loadComponent: () =>
+      import('./pages/perfil/perfil.page').then(m => m.PerfilPage)
   },
   {
+    // Faltaba el guard: sin él cualquiera podía entrar
+    // escribiendo la URL directamente sin estar logueado
     path: 'sala-espera',
-    loadComponent: () => import('./pages/sala-espera/sala-espera.page').then( m => m.SalaEsperaPage)
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/sala-espera/sala-espera.page').then(m => m.SalaEsperaPage)
   },
   {
+    // Faltaba el guard
     path: 'tablero',
-    loadComponent: () => import('./pages/tablero/tablero.page').then( m => m.TableroPage)
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/tablero/tablero.page').then(m => m.TableroPage)
   },
   {
+    // Faltaba el guard — esta es la más importante porque
+    // maneja pagos con dinero real
     path: 'tienda-monedas',
-    loadComponent: () => import('./pages/tienda-monedas/tienda-monedas.page').then( m => m.TiendaMonedasPage)
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/tienda-monedas/tienda-monedas.page').then(m => m.TiendaMonedasPage)
   }
 ];

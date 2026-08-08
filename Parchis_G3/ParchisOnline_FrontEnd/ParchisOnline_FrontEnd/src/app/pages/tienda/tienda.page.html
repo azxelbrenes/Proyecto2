@@ -1,3 +1,7 @@
+<!-- ================================================================ -->
+<!-- tienda.page.html — Tienda con rareza, equipamiento y monedas     -->
+<!-- ================================================================ -->
+
 <ion-content class="tienda-content" [fullscreen]="true">
 
   <div class="tienda-container">
@@ -13,6 +17,18 @@
         <ion-icon name="logo-bitcoin"></ion-icon>
         <span>{{ usuario?.UsuMonedasTotal || 0 | number }}</span>
       </div>
+    </div>
+
+    <!-- ── Banner de compra de monedas ────────────────────────── -->
+    <!-- Va arriba del catálogo: si alguien entró a la tienda sin
+         saldo, esto es lo primero que necesita ver -->
+    <div class="banner-monedas" (click)="irATiendaMonedas()">
+      <div class="banner-icono">💰</div>
+      <div class="banner-texto">
+        <strong>¿Sin monedas?</strong>
+        <span>Comprá con dinero real</span>
+      </div>
+      <ion-icon name="chevron-forward"></ion-icon>
     </div>
 
     <!-- ── Tabs de categorías ─────────────────────────────────── -->

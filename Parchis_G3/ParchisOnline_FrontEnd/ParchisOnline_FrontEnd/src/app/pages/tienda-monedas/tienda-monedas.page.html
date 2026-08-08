@@ -15,48 +15,59 @@
       </div>
     </div>
 
-    <!-- ── Título ─────────────────────────────────────────────── -->
-    <div class="titulo-section">
-      <div class="titulo-icono">💰</div>
-      <h1 class="titulo">Comprar Monedas</h1>
-      <p class="subtitulo">Recargá tu saldo y seguí jugando</p>
-    </div>
+    <!-- ================================================================ -->
+    <!-- ORDEN PENDIENTE — pasos a seguir tras abrir PayPal              -->
+    <!-- ================================================================ -->
+    <!-- Esta caja es lo PRIMERO que se ve cuando hay una compra en
+         curso. Antes el usuario volvía de PayPal y solo veía los
+         paquetes, sin saber qué hacer. -->
+    <div class="orden-pendiente" *ngIf="ordenPendiente" [class.pendiente-activa]="volvioDePayPal">
 
-    <!-- ── Loading ────────────────────────────────────────────── -->
-    <div class="loading-paquetes" *ngIf="cargando">
-      <ion-spinner name="crescent" color="warning"></ion-spinner>
-      <p>Cargando paquetes...</p>
-    </div>
-
-    <!-- ── Orden pendiente de confirmar ───────────────────────── -->
-    <!-- Aparece cuando el usuario abrió PayPal y debe volver
-         a confirmar que completó el pago -->
-    <div class="orden-pendiente" *ngIf="ordenPendiente">
       <div class="pendiente-header">
-        <ion-icon name="open-outline"></ion-icon>
-        <span>Pago en proceso</span>
+        <ion-icon name="time-outline"></ion-icon>
+        <span>Compra en proceso</span>
       </div>
 
-      <p class="pendiente-texto">
-        Completá el pago en la ventana de PayPal que se abrió.
-        Cuando termines, tocá el botón de abajo.
-      </p>
-
+      <!-- Resumen de lo que está comprando -->
       <div class="pendiente-detalle">
         <span>{{ ordenPendiente.nombre }}</span>
         <strong>{{ formatearNumero(ordenPendiente.monedas) }} monedas</strong>
       </div>
 
+      <!-- Pasos claros para el usuario -->
+      <div class="pendiente-pasos">
+        <div class="paso">
+          <span class="paso-num">1</span>
+          <span class="paso-texto">Completá el pago en la pestaña de PayPal</span>
+        </div>
+        <div class="paso">
+          <span class="paso-num">2</span>
+          <span class="paso-texto">Volvé acá y tocá el botón verde</span>
+        </div>
+      </div>
+
+      <!-- Botón principal de confirmación -->
       <ion-button
         expand="block"
         class="btn-confirmar"
         [disabled]="capturando"
         (click)="confirmarPago()">
         <ion-spinner *ngIf="capturando" name="crescent"></ion-spinner>
-        <span *ngIf="!capturando">
-          <ion-icon name="checkmark-circle" slot="start"></ion-icon>
+        <span *ngIf="!capturando" class="btn-contenido">
+          <ion-icon name="checkmark-circle"></ion-icon>
           Ya completé el pago
         </span>
+      </ion-button>
+
+      <!-- Por si cerró la pestaña de PayPal sin querer -->
+      <ion-button
+        expand="block"
+        fill="outline"
+        class="btn-reabrir"
+        [disabled]="capturando"
+        (click)="reabrirPayPal()">
+        <ion-icon name="open-outline" slot="start"></ion-icon>
+        Volver a abrir PayPal
       </ion-button>
 
       <ion-button
@@ -67,6 +78,19 @@
         (click)="cancelarOrden()">
         Cancelar compra
       </ion-button>
+    </div>
+
+    <!-- ── Título (solo si no hay orden pendiente) ────────────── -->
+    <div class="titulo-section" *ngIf="!ordenPendiente">
+      <div class="titulo-icono">💰</div>
+      <h1 class="titulo">Comprar Monedas</h1>
+      <p class="subtitulo">Recargá tu saldo y seguí jugando</p>
+    </div>
+
+    <!-- ── Loading ────────────────────────────────────────────── -->
+    <div class="loading-paquetes" *ngIf="cargando">
+      <ion-spinner name="crescent" color="warning"></ion-spinner>
+      <p>Cargando paquetes...</p>
     </div>
 
     <!-- ── Grid de paquetes ───────────────────────────────────── -->

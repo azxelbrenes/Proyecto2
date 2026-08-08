@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import {
@@ -8,7 +8,7 @@ import {
 import { addIcons } from 'ionicons';
 import {
   logoBitcoin, arrowBackOutline, openOutline, checkmarkCircle,
-  closeCircleOutline, shieldCheckmarkOutline, flame
+  closeCircleOutline, shieldCheckmarkOutline, flame, timeOutline
 } from 'ionicons/icons';
 import { PagoService } from '../../services/pago.service';
 import { AuthService } from '../../services/auth';
@@ -20,19 +20,23 @@ import { AuthService } from '../../services/auth';
   standalone:  true,
   imports: [CommonModule, IonContent, IonIcon, IonButton, IonSpinner]
 })
-export class TiendaMonedasPage implements OnInit, ViewWillEnter {
+export class TiendaMonedasPage implements OnInit, OnDestroy, ViewWillEnter {
+
+  // Clave donde guardamos la orden en sessionStorage.
+  // Usamos sessionStorage y no una variable normal porque el
+  // componente se reinicia cuando el usuario vuelve de PayPal.
+  private readonly CLAVE_ORDEN = 'orden_paypal_pendiente';
 
   // ── Variables ─────────────────────────────────────────────────
-  usuario:   any     = null;
-  paquetes:  any[]   = [];
-  cargando:  boolean = true;
-
-  // ID del paquete que está procesándose (para el spinner)
+  usuario:    any     = null;
+  paquetes:   any[]   = [];
+  cargando:   boolean = true;
   procesando: number | null = null;
+  capturando: boolean = false;
 
-  // ── Estado de la orden en curso ──────────────────────────────
-  // Cuando el usuario abre PayPal, guardamos estos datos para
-  // poder capturar el pago cuando vuelva
+  // Marca si el usuario ya volvió de PayPal (para resaltar el botón)
+  volvioDePayPal: boolean = false;
+
   ordenPendiente: {
     ordenId:   string;
     paqueteId: number;
@@ -40,7 +44,8 @@ export class TiendaMonedasPage implements OnInit, ViewWillEnter {
     nombre:    string;
   } | null = null;
 
-  capturando: boolean = false;
+  // Guardamos la referencia para poder quitarla en ngOnDestroy
+  private manejadorVisibilidad = () => this.alVolverALaPestana();
 
   constructor(
     private pagoService:     PagoService,
@@ -51,17 +56,75 @@ export class TiendaMonedasPage implements OnInit, ViewWillEnter {
   ) {
     addIcons({
       logoBitcoin, arrowBackOutline, openOutline, checkmarkCircle,
-      closeCircleOutline, shieldCheckmarkOutline, flame
+      closeCircleOutline, shieldCheckmarkOutline, flame, timeOutline
     });
   }
 
   ngOnInit(): void {
     this.usuario = this.authService.getUsuario();
+    this.recuperarOrdenPendiente();
     this.cargarPaquetes();
+
+    // Escuchamos cuando el usuario vuelve a esta pestaña.
+    // Así detectamos automáticamente su regreso de PayPal.
+    document.addEventListener('visibilitychange', this.manejadorVisibilidad);
+  }
+
+  ngOnDestroy(): void {
+    // Limpiamos el listener para no dejar basura en memoria
+    document.removeEventListener('visibilitychange', this.manejadorVisibilidad);
   }
 
   ionViewWillEnter(): void {
     this.usuario = this.authService.getUsuario();
+    // Al volver a esta pantalla recuperamos la orden si existía
+    this.recuperarOrdenPendiente();
+  }
+
+ 
+  // DETECCIÓN DE REGRESO DE PAYPAL
+  
+  // Se dispara cuando la pestaña vuelve a estar visible, es decir
+  // cuando el usuario cierra PayPal y regresa a la app.
+  private alVolverALaPestana(): void {
+    if (document.visibilityState !== 'visible') return;
+
+    // Si hay una orden pendiente, marcamos que ya volvió para
+    // resaltar visualmente el botón de confirmar
+    if (this.ordenPendiente && !this.volvioDePayPal) {
+      this.volvioDePayPal = true;
+      this.mostrarToast('Si ya pagaste, confirmá abajo para recibir tus monedas.', 'warning');
+    }
+  }
+
+  
+  // PERSISTENCIA DE LA ORDEN
+  
+  // Guardamos la orden en sessionStorage para que sobreviva al
+  // reinicio del componente cuando el usuario vuelve de PayPal.
+
+  private guardarOrdenPendiente(): void {
+    if (this.ordenPendiente) {
+      sessionStorage.setItem(this.CLAVE_ORDEN, JSON.stringify(this.ordenPendiente));
+    }
+  }
+
+  private recuperarOrdenPendiente(): void {
+    const guardada = sessionStorage.getItem(this.CLAVE_ORDEN);
+
+    if (guardada) {
+      try {
+        this.ordenPendiente = JSON.parse(guardada);
+      } catch {
+        this.limpiarOrdenPendiente();
+      }
+    }
+  }
+
+  private limpiarOrdenPendiente(): void {
+    this.ordenPendiente  = null;
+    this.volvioDePayPal  = false;
+    sessionStorage.removeItem(this.CLAVE_ORDEN);
   }
 
   // ================================================================
@@ -88,11 +151,10 @@ export class TiendaMonedasPage implements OnInit, ViewWillEnter {
   async comprarPaquete(paquete: any): Promise<void> {
     if (this.procesando !== null) return;
 
-    // Confirmación antes de mandarlo a PayPal
     const alert = await this.alertController.create({
       cssClass: 'alert-parchis',
       header:   paquete.Nombre,
-      message:  `Vas a comprar ${this.formatearNumero(paquete.Monedas)} monedas por $${paquete.PrecioUSD} USD.\n\nSe abrirá PayPal para completar el pago.`,
+      message:  `Vas a comprar ${this.formatearNumero(paquete.Monedas)} monedas por $${paquete.PrecioUSD} USD.\n\nSe abrirá PayPal en otra pestaña. Cuando termines de pagar, volvé acá y confirmá.`,
       buttons: [
         { text: 'Cancelar', role: 'cancel', cssClass: 'btn-cancelar' },
         {
@@ -118,16 +180,18 @@ export class TiendaMonedasPage implements OnInit, ViewWillEnter {
           return;
         }
 
-        // Guardamos la orden para poder capturarla después
+        // Guardamos la orden ANTES de abrir PayPal, así si el
+        // componente se reinicia la información no se pierde
         this.ordenPendiente = {
           ordenId:   datos.OrdenId,
           paqueteId: paquete.PaqueteId,
           monedas:   paquete.Monedas,
           nombre:    paquete.Nombre
         };
+        this.guardarOrdenPendiente();
+        this.volvioDePayPal = false;
 
-        // Abrimos PayPal en una ventana nueva.
-        // El usuario paga allá y vuelve a esta pantalla.
+        // Abrimos PayPal en una pestaña nueva
         window.open(datos.UrlAprobacion, '_blank');
       },
       error: async (error: any) => {
@@ -137,6 +201,16 @@ export class TiendaMonedasPage implements OnInit, ViewWillEnter {
         await this.mostrarToast(mensaje, 'danger');
       }
     });
+  }
+
+  // ── reabrirPayPal ────────────────────────────────────────────
+  // Por si el usuario cerró la pestaña de PayPal sin querer
+  reabrirPayPal(): void {
+    if (!this.ordenPendiente) return;
+
+    // Reconstruimos la URL de aprobación de PayPal Sandbox
+    const url = `https://www.sandbox.paypal.com/checkoutnow?token=${this.ordenPendiente.ordenId}`;
+    window.open(url, '_blank');
   }
 
   // ================================================================
@@ -162,8 +236,7 @@ export class TiendaMonedasPage implements OnInit, ViewWillEnter {
           this.usuario.UsuMonedasTotal = datos.SaldoNuevo;
           localStorage.setItem('usuario', JSON.stringify(this.usuario));
 
-          this.ordenPendiente = null;
-
+          this.limpiarOrdenPendiente();
           await this.mostrarExito(datos);
         } else {
           await this.mostrarToast(
@@ -176,7 +249,8 @@ export class TiendaMonedasPage implements OnInit, ViewWillEnter {
         this.capturando = false;
 
         const mensaje = error.error?.strMensajeRespuesta
-          ?? 'El pago no se pudo verificar. Si ya pagaste, esperá un momento e intentá de nuevo.';
+          ?? error.error?.mensaje
+          ?? 'El pago no se pudo verificar. Asegurate de haber completado el pago en PayPal.';
 
         await this.mostrarToast(mensaje, 'danger');
       }
@@ -184,7 +258,6 @@ export class TiendaMonedasPage implements OnInit, ViewWillEnter {
   }
 
   // ── cancelarOrden ────────────────────────────────────────────
-  // El usuario decide no completar el pago
   async cancelarOrden(): Promise<void> {
     const alert = await this.alertController.create({
       cssClass: 'alert-parchis',
@@ -195,7 +268,7 @@ export class TiendaMonedasPage implements OnInit, ViewWillEnter {
         {
           text: 'Cancelar',
           cssClass: 'btn-peligro',
-          handler: () => { this.ordenPendiente = null; }
+          handler: () => this.limpiarOrdenPendiente()
         }
       ]
     });
@@ -216,8 +289,6 @@ export class TiendaMonedasPage implements OnInit, ViewWillEnter {
   // ================================================================
   // HELPERS
   // ================================================================
-
-  // Clase de estilo según el paquete (más caro = más llamativo)
   getPaqueteClass(paquete: any): string {
     const clases: { [key: number]: string } = {
       1: 'paquete-pequeno',

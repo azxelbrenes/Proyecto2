@@ -14,7 +14,7 @@
   display:         flex;
   justify-content: space-between;
   align-items:     center;
-  margin-bottom:   1.1rem;
+  margin-bottom:   1rem;
   padding:         0.55rem 0.9rem;
   background:      rgba(255, 255, 255, 0.05);
   border:          1px solid rgba(255, 255, 255, 0.1);
@@ -45,6 +45,50 @@
 
   ion-icon { color: #FFC300; font-size: 1.15rem; }
   span     { color: #FFDD55; font-weight: 800; font-size: 0.95rem; }
+}
+
+// ── Banner de compra de monedas ──────────────────────────────────
+// Va arriba del catálogo: si alguien entró a la tienda sin saldo,
+// esto es lo primero que necesita ver.
+.banner-monedas {
+  display:        flex;
+  align-items:    center;
+  gap:            0.8rem;
+  background:     linear-gradient(135deg, rgba(255,195,0,0.18), rgba(255,140,0,0.08));
+  border:         1px solid rgba(255, 195, 0, 0.4);
+  border-radius:  14px;
+  padding:        0.8rem 1rem;
+  margin-bottom:  1.2rem;
+  cursor:         pointer;
+  transition:     transform 0.15s ease;
+
+  &:active { transform: scale(0.98); }
+
+  .banner-icono {
+    font-size: 1.8rem;
+    filter:    drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  }
+
+  .banner-texto {
+    flex: 1;
+
+    strong {
+      display:     block;
+      color:       #FFDD55;
+      font-size:   0.9rem;
+      font-weight: 800;
+    }
+
+    span {
+      color:     rgba(255, 255, 255, 0.5);
+      font-size: 0.75rem;
+    }
+  }
+
+  ion-icon {
+    color:     rgba(255, 195, 0, 0.6);
+    font-size: 1.3rem;
+  }
 }
 
 // ── Tabs de categoría ────────────────────────────────────────────
@@ -143,13 +187,13 @@
 
 // ── Check de equipado ────────────────────────────────────────────
 .badge-equipado {
-  position:        absolute;
-  top:             0.45rem;
-  right:           0.5rem;
-  color:           #4CAF50;
-  font-size:       1.15rem;
-  z-index:         2;
-  filter:          drop-shadow(0 0 5px rgba(76, 175, 80, 0.6));
+  position:  absolute;
+  top:       0.45rem;
+  right:     0.5rem;
+  color:     #4CAF50;
+  font-size: 1.15rem;
+  z-index:   2;
+  filter:    drop-shadow(0 0 5px rgba(76, 175, 80, 0.6));
 }
 
 // ================================================================
@@ -321,11 +365,11 @@
 
 // ── Info del artículo ────────────────────────────────────────────
 .articulo-nombre {
-  color:       white;
-  font-weight: 800;
-  font-size:   0.87rem;
+  color:         white;
+  font-weight:   800;
+  font-size:     0.87rem;
   margin-bottom: 0.2rem;
-  z-index:     1;
+  z-index:       1;
 }
 
 .articulo-desc {
@@ -363,7 +407,7 @@
   ion-icon { font-size: 0.95rem; }
 
   // Sin saldo: se ve apagado pero sigue clickeable
-  // (el toast le explica por qué no puede comprarlo)
+  // (el toast le sugiere comprar monedas)
   &.btn-sin-saldo {
     --background: rgba(255, 255, 255, 0.08);
     --color:      rgba(255, 255, 255, 0.4);
