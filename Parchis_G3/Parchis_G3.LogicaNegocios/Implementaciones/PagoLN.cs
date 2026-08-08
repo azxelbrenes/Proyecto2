@@ -95,7 +95,7 @@ public class PagoLN : IPagoLN
             // Obtenemos el token de acceso de PayPal
             string? token = await ObtenerTokenPayPal();
             if (token == null)
-                return Respuesta<OrdenCreadaDTO>.Error("No se pudo autenticar con PayPal.");
+                return Respuesta<OrdenCreadaDTO>.Error("No se pudo conectar con PayPal. Intentá de nuevo en unos momentos.");
 
             // Armamos el cuerpo de la orden según la API de PayPal
             var body = new
@@ -119,8 +119,8 @@ public class PagoLN : IPagoLN
                     brand_name = "Parchís Online",
                     landing_page = "NO_PREFERENCE",
                     user_action = "PAY_NOW",
-                    return_url = "http://localhost:8100/tienda?pago=exitoso",
-                    cancel_url = "http://localhost:8100/tienda?pago=cancelado"
+                    return_url = "http://localhost:8100/tienda-monedas?pago=exitoso",
+                    cancel_url = "http://localhost:8100/tienda-monedas?pago=cancelado"
                 }
             };
 
@@ -134,7 +134,10 @@ public class PagoLN : IPagoLN
             var contenido = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
-                return Respuesta<OrdenCreadaDTO>.Error($"PayPal rechazó la orden: {contenido}");
+            {
+                // Traducimos el error técnico de PayPal a español
+                return Respuesta<OrdenCreadaDTO>.Validacion(TraducirErrorPayPal(contenido));
+            }
 
             using var doc = JsonDocument.Parse(contenido);
             var root = doc.RootElement;
@@ -192,11 +195,13 @@ public class PagoLN : IPagoLN
                 .ValorRetorno?.Any() ?? false;
 
             if (yaExiste)
-                return Respuesta<ResultadoPagoDTO>.Validacion("Este pago ya fue procesado anteriormente.");
+                return Respuesta<ResultadoPagoDTO>.Validacion(
+                    "Este pago ya fue procesado. Revisá tu saldo, las monedas deberían estar acreditadas."
+                );
 
             string? token = await ObtenerTokenPayPal();
             if (token == null)
-                return Respuesta<ResultadoPagoDTO>.Error("No se pudo autenticar con PayPal.");
+                return Respuesta<ResultadoPagoDTO>.Error("No se pudo conectar con PayPal. Intentá de nuevo en unos momentos.");
 
             // Le PREGUNTAMOS a PayPal si el pago realmente se completó.
             // Nunca confiamos en que el cliente diga "ya pagué".
@@ -208,14 +213,23 @@ public class PagoLN : IPagoLN
             var contenido = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
-                return Respuesta<ResultadoPagoDTO>.Error($"El pago no pudo completarse: {contenido}");
+            {
+                // Acá es donde antes se devolvía el JSON crudo de PayPal
+                // al usuario. Ahora lo traducimos a un mensaje claro.
+                return Respuesta<ResultadoPagoDTO>.Validacion(TraducirErrorPayPal(contenido));
+            }
 
             using var doc = JsonDocument.Parse(contenido);
             string estado = doc.RootElement.GetProperty("status").GetString() ?? "";
 
             // PayPal devuelve "COMPLETED" solo si el dinero se cobró
             if (estado != "COMPLETED")
-                return Respuesta<ResultadoPagoDTO>.Validacion($"El pago quedó en estado {estado}, no se acreditaron monedas.");
+            {
+                return Respuesta<ResultadoPagoDTO>.Validacion(
+                    "El pago todavía no está confirmado por PayPal. " +
+                    "Si ya pagaste, esperá unos segundos e intentá de nuevo."
+                );
+            }
 
             // ── Recién ahora acreditamos las monedas ─────────────
             var usuarioResp = unidadTrabajo.TUsuario.ObtenerEntidad(u => u.UsuId == usuId);
@@ -296,6 +310,95 @@ public class PagoLN : IPagoLN
         catch
         {
             return null;
+        }
+    }
+
+    // ================================================================
+    // TRADUCIR ERRORES DE PAYPAL
+    // ================================================================
+    // PayPal devuelve errores en JSON con códigos técnicos en inglés:
+    //
+    //   {"name":"UNPROCESSABLE_ENTITY","details":[{"issue":
+    //   "ORDER_NOT_APPROVED","description":"Payer has not yet
+    //   approved the Order for payment..."}],"debug_id":"f448045..."}
+    //
+    // Antes ese JSON se mostraba tal cual al usuario, lo cual es
+    // ilegible y poco profesional. Este método extrae el código
+    // específico y lo traduce a un mensaje claro en español.
+    private string TraducirErrorPayPal(string contenidoJson)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(contenidoJson);
+            var root = doc.RootElement;
+
+            // El código específico viene dentro de "details"
+            string issue = "";
+
+            if (root.TryGetProperty("details", out var details) &&
+                details.ValueKind == JsonValueKind.Array &&
+                details.GetArrayLength() > 0)
+            {
+                var primerDetalle = details[0];
+                if (primerDetalle.TryGetProperty("issue", out var issueProp))
+                    issue = issueProp.GetString() ?? "";
+            }
+
+            // Si no hay detalles, usamos el nombre general del error
+            if (string.IsNullOrEmpty(issue) &&
+                root.TryGetProperty("name", out var nameProp))
+            {
+                issue = nameProp.GetString() ?? "";
+            }
+
+            // Traducimos según el código
+            return issue switch
+            {
+                "ORDER_NOT_APPROVED" =>
+                    "Todavía no completaste el pago en PayPal. " +
+                    "Abrí la ventana de PayPal, aprobá la compra y volvé a intentar.",
+
+                "ORDER_ALREADY_CAPTURED" =>
+                    "Este pago ya fue procesado anteriormente. " +
+                    "Revisá tu saldo, las monedas deberían estar acreditadas.",
+
+                "INSTRUMENT_DECLINED" =>
+                    "PayPal rechazó el método de pago. " +
+                    "Probá con otra tarjeta o cuenta.",
+
+                "PAYER_ACTION_REQUIRED" =>
+                    "PayPal necesita que confirmes algo más. " +
+                    "Volvé a abrir PayPal y completá los pasos que te pida.",
+
+                "RESOURCE_NOT_FOUND" =>
+                    "La orden de pago expiró o ya no existe. " +
+                    "Cancelá esta compra y empezá de nuevo.",
+
+                "PAYMENT_ALREADY_DONE" =>
+                    "Este pago ya se completó anteriormente.",
+
+                "PAYEE_ACCOUNT_RESTRICTED" =>
+                    "La cuenta de PayPal tiene restricciones. " +
+                    "Contactá al soporte del juego.",
+
+                "UNPROCESSABLE_ENTITY" =>
+                    "No se pudo procesar el pago. " +
+                    "Verificá que hayas completado la compra en PayPal.",
+
+                "INVALID_REQUEST" =>
+                    "Los datos del pago no son válidos. " +
+                    "Cancelá esta compra e intentá de nuevo.",
+
+                // Cualquier otro error que no tengamos mapeado
+                _ => "No se pudo verificar el pago con PayPal. " +
+                     "Asegurate de haber completado la compra e intentá de nuevo."
+            };
+        }
+        catch
+        {
+            // Si el JSON viene corrupto o en otro formato,
+            // devolvemos un mensaje genérico en vez de crashear
+            return "No se pudo verificar el pago con PayPal. Intentá de nuevo en unos momentos.";
         }
     }
 }

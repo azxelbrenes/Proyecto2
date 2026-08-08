@@ -1,3 +1,15 @@
+// ================================================================
+// tienda.page.scss — Tienda con rareza y acceso a monedas
+// ================================================================
+// EL PROBLEMA QUE RESUELVE ESTE REDISEÑO:
+// Antes todos los artículos se veían idénticos — la misma ficha
+// roja sobre amarillo para "Clásica", "Dorada", "Cristal" y "Neón".
+// El jugador no tenía forma de saber qué estaba comprando.
+//
+// Ahora cada artículo tiene su propio gradiente y efecto, y las
+// tarjetas tienen bordes según la rareza (calculada por precio).
+// ================================================================
+
 .tienda-content {
   --background: radial-gradient(circle at top, #3A2465 0%, #1C1230 45%, #0D0818 100%);
 }

@@ -1,22 +1,3 @@
-// ================================================================
-// tienda.page.ts — Tienda con inventario, rareza y acceso a monedas
-// ================================================================
-// ¿QUÉ HACE ESTA PANTALLA?
-//
-// 1. Carga el CATÁLOGO de artículos junto con el INVENTARIO del
-//    jugador, así puede mostrar "En uso" o "Equipar" en vez del
-//    precio cuando ya tiene el artículo.
-//
-// 2. Cada artículo tiene identidad visual propia según su nombre
-//    (dorado brilla, cristal es translúcido, neón tiene glow),
-//    en vez de que todos se vean iguales.
-//
-// 3. Sistema de rareza calculado por precio, que le da jerarquía
-//    visual al catálogo.
-//
-// 4. Banner de acceso a la tienda de monedas con dinero real.
-// ================================================================
-
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
