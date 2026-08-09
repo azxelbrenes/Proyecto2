@@ -8,7 +8,7 @@
 
   <div class="tablero-container" *ngIf="!cargando">
 
-    <!-- ── Barra superior: jugadores ──────────────────────────── -->
+    <!-- ── Barra superior: los 4 jugadores ────────────────────── -->
     <div class="jugadores-bar">
       <div
         class="jugador-chip"
@@ -20,7 +20,9 @@
         <div class="chip-avatar">{{ jugador.EsBot ? '🤖' : '🎮' }}</div>
         <div class="chip-nombre">{{ jugador.Nombre }}</div>
 
-        <!-- Indicador de desconexión -->
+        <!-- Indicador de que le toca -->
+        <div class="chip-indicador" *ngIf="esTurnoDe(jugador.JpId)">▼</div>
+
         <ion-icon name="wifi-outline" class="chip-wifi" *ngIf="jugador.Desconectado"></ion-icon>
       </div>
     </div>
@@ -39,6 +41,9 @@
             *ngFor="let columna of columnas"
             class="celda"
             [ngClass]="[getTipoCelda(fila, columna), getZonaCasa(fila, columna)]">
+
+            <!-- Estrella de casilla segura -->
+            <span class="estrella-seguro" *ngIf="tieneEstrella(fila, columna)">★</span>
 
             <!-- Fichas que están en esta celda -->
             <div class="fichas-celda">
@@ -61,56 +66,75 @@
       </div>
     </div>
 
-    <!-- ── Panel inferior: turno y dado ───────────────────────── -->
+    <!-- ================================================================ -->
+    <!-- PANEL INFERIOR — turno, dado y acciones                          -->
+    <!-- ================================================================ -->
     <div class="panel-inferior">
 
-      <!-- Indicador de turno -->
-      <div class="turno-info" [class.turno-mio]="esMiTurno">
-        <span *ngIf="esMiTurno && !dadoTirado">¡Es tu turno! Tirá el dado</span>
-        <span *ngIf="esMiTurno && dadoTirado">Elegí una ficha para mover</span>
-        <span *ngIf="!esMiTurno">Turno de {{ getNombreJugadorActual() }}</span>
-      </div>
+      <!-- ── Indicador de turno ───────────────────────────────── -->
+      <div class="turno-banner" [class.turno-mio]="esMiTurno">
 
-      <!-- Zona del dado -->
-      <div class="dado-zona">
-
-        <!-- Botón del dado -->
+        <!-- Ficha del color de quien juega -->
         <div
-          class="dado"
-          [class.dado-activo]="esMiTurno && !dadoTirado"
-          [class.dado-girando]="girandoDado"
-          (click)="tirarDado()">
-
-          <!-- Cara del dado según el valor -->
-          <div class="dado-cara" *ngIf="!girandoDado && valorDado > 0">
-            <span class="punto" *ngFor="let p of [].constructor(valorDado)"></span>
-          </div>
-
-          <!-- Sin tirar todavía -->
-          <div class="dado-cara dado-vacio" *ngIf="!girandoDado && valorDado === 0">
-            🎲
-          </div>
-
-          <!-- Girando -->
-          <div class="dado-cara" *ngIf="girandoDado">🎲</div>
+          class="turno-color"
+          [ngClass]="'ficha-' + (getColorJugadorActual() || 'rojo').toLowerCase()">
         </div>
 
-        <!-- Botones laterales -->
-        <div class="botones-laterales">
+        <div class="turno-texto">
+          <span class="turno-nombre">
+            {{ esMiTurno ? 'Tu turno' : getNombreJugadorActual() }}
+          </span>
+          <span class="turno-accion">
+            <ng-container *ngIf="esMiTurno && !dadoTirado">Tocá el dado</ng-container>
+            <ng-container *ngIf="esMiTurno && dadoTirado">Elegí una ficha</ng-container>
+            <ng-container *ngIf="!esMiTurno">Esperando...</ng-container>
+          </span>
+        </div>
 
-          <!-- Chat -->
-          <div class="btn-accion" (click)="toggleChat()">
-            <ion-icon name="chatbubble-outline"></ion-icon>
-            <span class="badge-mensajes" *ngIf="mensajesNoLeidos > 0">
-              {{ mensajesNoLeidos }}
-            </span>
+      </div>
+
+      <!-- ── Zona del dado ────────────────────────────────────── -->
+      <div class="dado-zona">
+
+        <!-- Botón del chat -->
+        <div class="btn-accion" (click)="toggleChat()">
+          <ion-icon name="chatbubble-outline"></ion-icon>
+          <span class="badge-mensajes" *ngIf="mensajesNoLeidos > 0">
+            {{ mensajesNoLeidos }}
+          </span>
+        </div>
+
+        <!-- El dado -->
+        <div class="dado-contenedor">
+          <div
+            class="dado"
+            [class.dado-activo]="esMiTurno && !dadoTirado"
+            [class.dado-girando]="girandoDado"
+            (click)="tirarDado()">
+
+            <!-- Cara con puntos según el valor -->
+            <div class="dado-cara" *ngIf="!girandoDado && valorDado > 0">
+              <span class="punto" *ngFor="let p of getPuntos()"></span>
+            </div>
+
+            <!-- Sin tirar todavía -->
+            <div class="dado-cara dado-emoji" *ngIf="!girandoDado && valorDado === 0">
+              🎲
+            </div>
+
+            <!-- Girando -->
+            <div class="dado-cara dado-emoji" *ngIf="girandoDado">🎲</div>
           </div>
 
-          <!-- Abandonar -->
-          <div class="btn-accion btn-salir" (click)="abandonarPartida()">
-            <ion-icon name="exit-outline"></ion-icon>
+          <!-- Etiqueta del valor -->
+          <div class="dado-valor" *ngIf="valorDado > 0 && !girandoDado">
+            Sacaste {{ valorDado }}
           </div>
+        </div>
 
+        <!-- Botón de abandonar -->
+        <div class="btn-accion btn-salir" (click)="abandonarPartida()">
+          <ion-icon name="exit-outline"></ion-icon>
         </div>
 
       </div>

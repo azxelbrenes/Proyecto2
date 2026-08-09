@@ -17,7 +17,7 @@ import { PartidaService } from '../../services/partida.service';
 import { AuthService } from '../../services/auth';
 import {
   ANILLO, CASAS, RECTA_FINAL,
-  obtenerCelda, esCasillaSegura
+  obtenerCelda, esCasillaSegura, esSeguroExtra
 } from './tablero.config';
 
 @Component({
@@ -26,8 +26,8 @@ import {
   styleUrls:   ['./tablero.page.scss'],
   standalone:  true,
   // FormsModule es necesario para el [(ngModel)] del input del chat.
-  // IonSpinner e IonButton se quitaron porque el tablero no los usa:
-  // el dado y los botones laterales son divs con estilos propios.
+  // No importamos IonSpinner ni IonButton porque el tablero no los
+  // usa: el dado y los botones son divs con estilos propios.
   imports: [CommonModule, FormsModule, IonContent, IonIcon]
 })
 export class TableroPage implements OnInit, OnDestroy {
@@ -421,7 +421,7 @@ export class TableroPage implements OnInit, OnDestroy {
       // Las casillas de salida son seguras y llevan el color del dueño
       if (esCasillaSegura(indiceAnillo)) {
         const colores = ['rojo', 'azul', 'verde', 'amarillo'];
-        const indice  = [0, 16, 32, 48].indexOf(indiceAnillo);
+        const indice  = [0, 17, 34, 51].indexOf(indiceAnillo);
         return `celda-anillo celda-salida celda-salida-${colores[indice]}`;
       }
       return 'celda-anillo';
@@ -459,6 +459,39 @@ export class TableroPage implements OnInit, OnDestroy {
     if (fila >= 1  && fila <= 6  && columna >= 11 && columna <= 15) return 'zona-verde';
     if (fila >= 10 && fila <= 15 && columna >= 11 && columna <= 15) return 'zona-amarillo';
     return '';
+  }
+
+  // ── tieneEstrella ────────────────────────────────────────────
+  // Marca las casillas de seguro con una estrella, igual que en
+  // un tablero de Parchís real.
+  tieneEstrella(fila: number, columna: number): boolean {
+    const indiceAnillo = ANILLO.findIndex(
+      c => c.fila === fila && c.columna === columna
+    );
+
+    if (indiceAnillo < 0) return false;
+
+    return esSeguroExtra(indiceAnillo);
+  }
+
+  // ── getPuntos ────────────────────────────────────────────────
+  // Devuelve un array del tamaño del valor del dado, para poder
+  // renderizar esa cantidad de puntos con *ngFor.
+  //
+  // Lo hacemos en un método porque usar [].constructor(n) directo
+  // en el HTML confunde al compilador de Angular.
+  getPuntos(): number[] {
+    return Array.from({ length: this.valorDado }, (_, i) => i);
+  }
+
+  // ── getColorJugadorActual ────────────────────────────────────
+  // El color de quien tiene el turno, para pintar la ficha
+  // indicadora del banner inferior.
+  getColorJugadorActual(): string {
+    const jugador = this.getJugadores().find(
+      (j: any) => j.JpId === this.estado?.TurnoActualJpId
+    );
+    return jugador?.Color ?? 'ROJO';
   }
 
   // ── esFichaMovible ───────────────────────────────────────────
