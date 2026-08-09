@@ -80,6 +80,12 @@ export class TableroPage implements OnInit, OnDestroy {
   private mapaCeldas: Map<string, InfoCelda> = new Map();
   private mapaFichas: Map<string, any[]>     = new Map();
 
+  // ── Abandono ──────────────────────────────────────────────────
+  // Evita que un doble toque mande dos veces la solicitud, y sirve
+  // de red por si el servidor no confirma.
+  private abandonoEnCurso: boolean = false;
+  private timerAbandono:   any     = null;
+
   private subs: Subscription[] = [];
 
   constructor(
@@ -114,6 +120,17 @@ export class TableroPage implements OnInit, OnDestroy {
     const usuario = this.authService.getUsuario();
     this.usuId = usuario?.UsuId ?? 0;
 
+    // usuId solo se usa para abandonar. Si viene en 0 el resto del
+    // tablero funciona igual y el fallo pasa desapercibido hasta que
+    // alguien toca el botón de salir, así que conviene avisar ya.
+    if (this.usuId <= 0) {
+      console.warn(
+        'usuId no se pudo leer del usuario autenticado. ' +
+        'Se intentará resolver desde el estado de la partida.',
+        usuario
+      );
+    }
+
     if (this.parId <= 0 || this.jpId <= 0) {
       await this.mostrarToast('Error al entrar a la partida.', 'danger');
       this.router.navigate(['/home'], { replaceUrl: true });
@@ -124,7 +141,8 @@ export class TableroPage implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    if (this.timerDado) clearTimeout(this.timerDado);
+    if (this.timerDado)    clearTimeout(this.timerDado);
+    if (this.timerAbandono) clearTimeout(this.timerAbandono);
     this.subs.forEach(s => s.unsubscribe());
   }
 
@@ -201,6 +219,31 @@ export class TableroPage implements OnInit, OnDestroy {
     this.subs.push(
       this.signalR.onJugadorAbandono$.subscribe((datos) => {
         this.mostrarAviso(datos.mensaje ?? 'Un jugador abandonó');
+      })
+    );
+
+    // ── Confirmación de MI abandono ──────────────────────────
+    // El Hub manda esto con Clients.Caller. Sin escucharlo, el
+    // servidor confirmaba en el vacío y la pantalla no se movía.
+    this.subs.push(
+      this.signalR.onAbandonoConfirmado$.subscribe(async (datos) => {
+        this.abandonoEnCurso = false;
+        if (this.timerAbandono) clearTimeout(this.timerAbandono);
+
+        const penalizacion = datos?.MonedasPenalizacion ?? datos?.Penalizacion;
+        const mensaje = penalizacion
+          ? `Abandonaste la partida. Penalización: ${penalizacion} monedas.`
+          : 'Abandonaste la partida.';
+
+        await this.mostrarToast(mensaje, 'medium');
+        this.router.navigate(['/home'], { replaceUrl: true });
+      })
+    );
+
+    // ── Jugadores reemplazados por bot tras vencer los 60 seg ─
+    this.subs.push(
+      this.signalR.onJugadoresReemplazados$.subscribe((datos) => {
+        this.mostrarAviso(datos?.mensaje ?? 'Un jugador fue reemplazado por un bot');
       })
     );
 
@@ -369,24 +412,80 @@ export class TableroPage implements OnInit, OnDestroy {
     );
   }
 
+  // ── resolverUsuId ────────────────────────────────────────────
+  // El Hub identifica a quien abandona por usuId, no por jpId. Si
+  // el token no lo trajo, lo sacamos del estado de la partida, que
+  // ya tenemos en memoria y sabemos que es correcto.
+  private resolverUsuId(): number {
+    if (this.usuId > 0) return this.usuId;
+
+    const yo = this.getJugadores().find((j: any) => j.JpId === this.jpId);
+    const desdeEstado = yo?.UsuId ?? 0;
+
+    if (desdeEstado > 0) {
+      this.usuId = desdeEstado;
+    }
+
+    return desdeEstado;
+  }
+
   async abandonarPartida(): Promise<void> {
+    if (this.abandonoEnCurso) return;
+
+    const usuId = this.resolverUsuId();
+
+    // Sin un usuId válido el Hub no puede saber a quién penalizar.
+    // Antes esto fallaba en silencio: la solicitud salía con 0, el
+    // servidor no encontraba al jugador y no pasaba nada.
+    if (usuId <= 0) {
+      await this.mostrarToast(
+        'No se pudo identificar tu usuario. Cerrá sesión y volvé a entrar.',
+        'danger'
+      );
+      return;
+    }
+
     const alert = await this.alertController.create({
       cssClass: 'alert-parchis',
       header:   'Abandonar partida',
-      message:  'Perderás el 20% de tu entrada como penalización.\n\nUn bot tomará tu lugar. ¿Confirmás?',
+      message:  'Perderás el 20% de tu entrada como penalización. Un bot tomará tu lugar. ¿Confirmás?',
       buttons: [
         { text: 'Seguir jugando', role: 'cancel', cssClass: 'btn-cancelar' },
         {
           text: 'Abandonar',
           cssClass: 'btn-peligro',
-          handler: async () => {
-            await this.signalR.abandonarPartida(this.parId, this.usuId);
-            this.router.navigate(['/home'], { replaceUrl: true });
+          handler: () => {
+            // No usamos async acá: devolvemos true para que el alert
+            // se cierre de inmediato y el envío sigue por su cuenta.
+            this.confirmarAbandono(usuId);
+            return true;
           }
         }
       ]
     });
+
     await alert.present();
+  }
+
+  // ── confirmarAbandono ────────────────────────────────────────
+  // La navegación al home ocurre cuando llega AbandonoConfirmado.
+  // Si el servidor no contesta en 5 segundos, salimos igual: no
+  // tiene sentido dejar al jugador atrapado en la partida.
+  private async confirmarAbandono(usuId: number): Promise<void> {
+    this.abandonoEnCurso = true;
+
+    this.timerAbandono = setTimeout(async () => {
+      if (!this.abandonoEnCurso) return;
+
+      this.abandonoEnCurso = false;
+      await this.mostrarToast(
+        'El servidor no respondió. Volviendo al inicio.',
+        'warning'
+      );
+      this.router.navigate(['/home'], { replaceUrl: true });
+    }, 5000);
+
+    await this.signalR.abandonarPartida(this.parId, usuId);
   }
 
   // ================================================================
