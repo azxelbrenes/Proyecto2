@@ -20,6 +20,16 @@
       <h1 class="titulo-juego">PARCHÍS<span class="titulo-online">ONLINE</span></h1>
     </div>
 
+    <!-- ── Botón de recompensa (si ya la reclamó hoy) ────────── -->
+    <!-- Le permite ver su racha aunque ya haya reclamado -->
+    <div
+      class="btn-racha"
+      *ngIf="estadoRecompensa && !estadoRecompensa.PuedeReclamar"
+      (click)="mostrarModalRecompensa = true">
+      <ion-icon name="flame"></ion-icon>
+      <span>Racha de {{ estadoRecompensa.RachaActual }} día{{ estadoRecompensa.RachaActual === 1 ? '' : 's' }}</span>
+    </div>
+
     <!-- ── Estado de carga de salas ───────────────────────────── -->
     <div class="loading-salas" *ngIf="cargando">
       <ion-spinner name="crescent" color="warning"></ion-spinner>
@@ -27,8 +37,6 @@
     </div>
 
     <!-- ── Overlay mientras busca partida ─────────────────────── -->
-    <!-- Bloquea la pantalla para que no toque otra sala mientras
-         el backend está creando la partida y cobrando la entrada -->
     <div class="buscando-overlay" *ngIf="buscandoPartida">
       <div class="buscando-card">
         <div class="dado-girando">🎲</div>
@@ -101,6 +109,76 @@
     <div class="nav-item" (click)="irAPerfil()">
       <ion-icon name="person-outline"></ion-icon>
       <span>Perfil</span>
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- MODAL DE RECOMPENSA DIARIA                                       -->
+  <!-- ================================================================ -->
+  <!-- Aparece automáticamente al abrir la app si hay recompensa
+       disponible. También se puede abrir manualmente desde el
+       botón de racha para ver el progreso. -->
+  <div class="modal-overlay" *ngIf="mostrarModalRecompensa" (click)="cerrarModalRecompensa()">
+    <div class="modal-recompensa" (click)="$event.stopPropagation()">
+
+      <!-- Brillo diagonal tipo carta -->
+      <div class="card-shine"></div>
+
+      <!-- Botón cerrar -->
+      <ion-icon name="close-outline" class="modal-cerrar" (click)="cerrarModalRecompensa()"></ion-icon>
+
+      <!-- Regalo animado -->
+      <div class="modal-regalo">🎁</div>
+
+      <h2 class="modal-titulo">Recompensa Diaria</h2>
+      <p class="modal-subtitulo">
+        {{ estadoRecompensa?.PuedeReclamar
+           ? '¡Entrá todos los días para ganar más!'
+           : 'Ya reclamaste hoy. ¡Volvé mañana!' }}
+      </p>
+
+      <!-- ── Barra de racha de 5 días ─────────────────────────── -->
+      <div class="racha-barra">
+        <div
+          class="racha-dia"
+          *ngFor="let d of diasRacha"
+          [class.dia-completado]="esDiaCompletado(d.dia)"
+          [class.dia-actual]="esDiaActual(d.dia)">
+
+          <div class="dia-circulo">
+            <span *ngIf="!esDiaCompletado(d.dia)">{{ d.dia }}</span>
+            <span *ngIf="esDiaCompletado(d.dia)">✓</span>
+          </div>
+
+          <div class="dia-monedas">{{ d.monedas }}</div>
+        </div>
+      </div>
+
+      <!-- ── Monedas que gana hoy ─────────────────────────────── -->
+      <div class="modal-premio" *ngIf="estadoRecompensa?.PuedeReclamar">
+        <span class="premio-label">HOY GANÁS</span>
+        <div class="premio-monto">
+          <ion-icon name="logo-bitcoin"></ion-icon>
+          {{ estadoRecompensa?.MonedasHoy | number }}
+        </div>
+      </div>
+
+      <!-- ── Botón de reclamar ────────────────────────────────── -->
+      <ion-button
+        *ngIf="estadoRecompensa?.PuedeReclamar"
+        expand="block"
+        class="btn-reclamar"
+        [disabled]="reclamando"
+        (click)="reclamarRecompensa()">
+        <ion-spinner *ngIf="reclamando" name="crescent"></ion-spinner>
+        <span *ngIf="!reclamando">🎁 Reclamar</span>
+      </ion-button>
+
+      <!-- ── Mensaje si ya reclamó ────────────────────────────── -->
+      <div class="modal-ya-reclamado" *ngIf="!estadoRecompensa?.PuedeReclamar">
+        Mañana ganás {{ estadoRecompensa?.MonedasSiguienteDia | number }} monedas
+      </div>
+
     </div>
   </div>
 
