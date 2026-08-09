@@ -100,10 +100,17 @@ public class ArticuloController : ControllerBase
 
     // ── POST /api/articulo/comprar ───────────────────────────────
     // El jugador compra un artículo de la tienda con sus monedas.
-    // El servidor verifica el precio REAL desde la BD — nunca
-    // confía en el precio que manda el cliente.
+    //
+    // ¿POR QUÉ RECIBE UN DTO Y NO UN TArticulo COMPLETO?
+    // Antes este endpoint recibía [FromBody] TArticulo, y ASP.NET
+    // Core rechazaba el request con error 400 porque TArticulo
+    // exige ArtNombre y ArtEstado, que el cliente no manda.
+    //
+    // Y hace bien en no mandarlos: si el cliente enviara el nombre
+    // y el precio, alguien podría manipularlos. El servidor SIEMPRE
+    // busca el precio real en la base de datos usando solo el ID.
     [HttpPost("comprar")]
-    public IActionResult Comprar([FromBody] TArticulo articulo)
+    public IActionResult Comprar([FromBody] ComprarArticuloRequest request)
     {
         try
         {
@@ -111,12 +118,15 @@ public class ArticuloController : ControllerBase
             if (usuId <= 0)
                 return Unauthorized("Token inválido.");
 
+            if (request == null || request.ArtId <= 0)
+                return BadRequest(new { mensaje = "El artículo es requerido." });
+
             // ── Evitar compras duplicadas ────────────────────────
             // Sin esta validación, comprar dos veces el mismo
             // artículo rompe el constraint UQ_UArt_UsuarioArticulo
             // de la base de datos y devuelve un error de SQL feo
             // en vez de un mensaje claro para el usuario.
-            if (_inventarioLN.YaLoTiene(usuId, articulo.ArtId, _unidadTrabajo))
+            if (_inventarioLN.YaLoTiene(usuId, request.ArtId, _unidadTrabajo))
             {
                 return BadRequest(new
                 {
@@ -125,14 +135,14 @@ public class ArticuloController : ControllerBase
             }
 
             // Precio real desde BD — el cliente no puede alterarlo
-            var artReal = _articuloLN.Buscar(new TArticulo { ArtId = articulo.ArtId });
+            var artReal = _articuloLN.Buscar(new TArticulo { ArtId = request.ArtId });
             if (!artReal.blnIndicadorTransaccion)
-                return NotFound("Artículo no encontrado.");
+                return NotFound(new { mensaje = "Artículo no encontrado." });
 
             // Saldo actual del jugador
             var usuario = _usuarioLN.Buscar(new TUsuario { UsuId = usuId });
             if (!usuario.blnIndicadorTransaccion)
-                return NotFound("Usuario no encontrado.");
+                return NotFound(new { mensaje = "Usuario no encontrado." });
 
             // Verificamos que tenga monedas suficientes
             if (usuario.ValorRetorno!.UsuMonedasTotal < artReal.ValorRetorno!.ArtPrecio)
@@ -165,4 +175,19 @@ public class ArticuloController : ControllerBase
             return StatusCode(500, "Error interno del servidor.");
         }
     }
+}
+
+// ================================================================
+// DTO de compra
+// ================================================================
+// Solo recibe el ID del artículo. El nombre, el precio y el estado
+// los busca el servidor en la base de datos.
+//
+// Este es el mismo principio que aplicamos en el matchmaking (donde
+// solo se manda el SalId) y en los pagos (donde solo se manda el
+// PaqueteId): el cliente identifica QUÉ quiere, el servidor decide
+// CUÁNTO cuesta.
+public class ComprarArticuloRequest
+{
+    public int ArtId { get; set; }
 }

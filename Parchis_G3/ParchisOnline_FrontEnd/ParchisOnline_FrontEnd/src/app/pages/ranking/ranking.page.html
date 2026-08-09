@@ -1,0 +1,130 @@
+<ion-content class="ranking-content" [fullscreen]="true">
+
+  <div class="ranking-container">
+
+    <!-- ── Header ─────────────────────────────────────────────── -->
+    <div class="header-bar">
+      <div class="btn-volver" (click)="volver()">
+        <ion-icon name="arrow-back-outline"></ion-icon>
+      </div>
+
+      <div class="header-titulo">
+        <ion-icon name="trophy" class="titulo-icon"></ion-icon>
+        <span>Ranking</span>
+      </div>
+
+      <div class="total-jugadores">
+        <ion-icon name="people-outline"></ion-icon>
+        {{ totalJugadores }}
+      </div>
+    </div>
+
+    <!-- ── Nota explicativa ───────────────────────────────────── -->
+    <!-- Aclaramos que solo cuentan las monedas ganadas jugando,
+         para que nadie piense que se puede comprar el puesto -->
+    <div class="nota-ranking">
+      <ion-icon name="information-circle-outline"></ion-icon>
+      <span>Solo cuentan las monedas ganadas en partidas</span>
+    </div>
+
+    <!-- ── Loading ────────────────────────────────────────────── -->
+    <div class="loading-ranking" *ngIf="cargando">
+      <ion-spinner name="crescent" color="warning"></ion-spinner>
+      <p>Cargando ranking...</p>
+    </div>
+
+    <div *ngIf="!cargando">
+
+      <!-- ── PODIO — los 3 primeros ───────────────────────────── -->
+      <div class="podio-wrapper" *ngIf="podio.length > 0">
+
+        <div
+          class="podio-item"
+          *ngFor="let jugador of podio"
+          [ngClass]="getPodioClass(jugador.Posicion)"
+          [class.podio-yo]="jugador.EsElUsuarioActual">
+
+          <div class="podio-medalla">{{ getMedalla(jugador.Posicion) }}</div>
+
+          <div class="podio-avatar">{{ getAvatar(jugador.Avatar) }}</div>
+
+          <div class="podio-nombre">{{ jugador.Nombre }}</div>
+
+          <div class="podio-monedas">
+            <ion-icon name="logo-bitcoin"></ion-icon>
+            {{ formatearNumero(jugador.MonedasGanadasPartida) }}
+          </div>
+
+          <div class="podio-victorias">
+            {{ jugador.PartidasGanadas }} victoria{{ jugador.PartidasGanadas === 1 ? '' : 's' }}
+          </div>
+
+          <div class="podio-tag" *ngIf="jugador.EsElUsuarioActual">VOS</div>
+        </div>
+
+      </div>
+
+      <!-- ── LISTA — del 4 en adelante ────────────────────────── -->
+      <div class="lista-ranking" *ngIf="resto.length > 0">
+
+        <div
+          class="ranking-item"
+          *ngFor="let jugador of resto"
+          [class.item-yo]="jugador.EsElUsuarioActual">
+
+          <div class="item-posicion">{{ jugador.Posicion }}</div>
+
+          <div class="item-avatar">{{ getAvatar(jugador.Avatar) }}</div>
+
+          <div class="item-info">
+            <div class="item-nombre">
+              {{ jugador.Nombre }}
+              <span class="tag-yo" *ngIf="jugador.EsElUsuarioActual">VOS</span>
+            </div>
+            <div class="item-victorias">
+              {{ jugador.PartidasGanadas }} victoria{{ jugador.PartidasGanadas === 1 ? '' : 's' }}
+            </div>
+          </div>
+
+          <div class="item-monedas">
+            <ion-icon name="logo-bitcoin"></ion-icon>
+            {{ formatearNumero(jugador.MonedasGanadasPartida) }}
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- ── Estado vacío ─────────────────────────────────────── -->
+      <div class="empty-ranking" *ngIf="top.length === 0">
+        <ion-icon name="trophy"></ion-icon>
+        <p>Todavía no hay jugadores en el ranking.</p>
+        <span>¡Ganá una partida para aparecer acá!</span>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- ── Mi posición fija abajo (si estoy fuera del top) ─────── -->
+  <!-- Sin esto, un jugador nuevo abriría el ranking y no se
+       vería a sí mismo por ningún lado -->
+  <div class="mi-posicion-fija" *ngIf="!cargando && miPosicion && !estaEnElTop()">
+    <div class="item-posicion">{{ miPosicion.Posicion }}</div>
+    <div class="item-avatar">{{ getAvatar(miPosicion.Avatar) }}</div>
+    <div class="item-info">
+      <div class="item-nombre">
+        {{ miPosicion.Nombre }}
+        <span class="tag-yo">VOS</span>
+      </div>
+      <div class="item-victorias">
+        {{ miPosicion.PartidasGanadas }} victoria{{ miPosicion.PartidasGanadas === 1 ? '' : 's' }}
+      </div>
+    </div>
+    <div class="item-monedas">
+      <ion-icon name="logo-bitcoin"></ion-icon>
+      {{ formatearNumero(miPosicion.MonedasGanadasPartida) }}
+    </div>
+  </div>
+
+</ion-content>

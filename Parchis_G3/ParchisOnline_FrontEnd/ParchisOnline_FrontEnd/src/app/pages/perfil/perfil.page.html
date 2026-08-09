@@ -10,7 +10,7 @@
       </div>
     </div>
 
-    <!-- ── Loading general ────────────────────────────────────── -->
+    <!-- ── Loading ────────────────────────────────────────────── -->
     <div class="loading-perfil" *ngIf="cargando">
       <ion-spinner name="crescent" color="warning"></ion-spinner>
       <p>Cargando perfil...</p>
@@ -24,7 +24,7 @@
 
         <!-- Nombre — modo lectura -->
         <div class="nombre-row" *ngIf="!editando">
-          <h2 class="nombre-usuario">{{ usuario.UsuNombre }}</h2>
+          <h2 class="nombre-usuario">{{ usuario?.UsuNombre }}</h2>
           <ion-icon name="create-outline" class="btn-editar" (click)="activarEdicion()"></ion-icon>
         </div>
 
@@ -33,18 +33,19 @@
           <ion-input
             [(ngModel)]="nombreEditado"
             class="input-nombre"
+            maxlength="100"
             placeholder="Tu nombre">
           </ion-input>
           <ion-icon name="checkmark-circle" class="btn-guardar" (click)="guardarNombre()"></ion-icon>
           <ion-icon name="close-circle" class="btn-cancelar" (click)="cancelarEdicion()"></ion-icon>
         </div>
 
-        <div class="correo-usuario">{{ usuario.UsuCorreo }}</div>
+        <div class="correo-usuario">{{ usuario?.UsuCorreo }}</div>
 
         <!-- Badge de monedas -->
         <div class="monedas-badge-grande">
           <ion-icon name="logo-bitcoin"></ion-icon>
-          <span>{{ usuario.UsuMonedasTotal | number }}</span>
+          <span>{{ usuario?.UsuMonedasTotal | number }}</span>
           <span class="monedas-label">monedas</span>
         </div>
       </div>
@@ -72,6 +73,62 @@
           <div class="stat-numero">{{ estadisticas?.porcentajeVictoria || 0 }}%</div>
           <div class="stat-label">Victoria</div>
         </div>
+      </div>
+
+      <!-- ── Botón de Ranking ──────────────────────────────────── -->
+      <div class="btn-ranking" (click)="irARanking()">
+        <div class="ranking-icono">🏆</div>
+        <div class="ranking-texto">
+          <strong>Ranking Global</strong>
+          <span>Mirá tu posición entre todos los jugadores</span>
+        </div>
+        <ion-icon name="chevron-forward"></ion-icon>
+      </div>
+
+      <!-- ── Equipamiento actual ───────────────────────────────── -->
+      <div class="seccion-titulo">
+        <ion-icon name="shirt-outline"></ion-icon>
+        Mi equipamiento
+      </div>
+
+      <div class="equipamiento-grid" *ngIf="equipamiento">
+
+        <!-- Ficha -->
+        <div class="equipo-card" (click)="irACambiarEquipo()">
+          <div class="equipo-preview" [ngClass]="getItemClass(equipamiento.Ficha)">
+            <div class="forma-ficha"></div>
+          </div>
+          <div class="equipo-tipo">Ficha</div>
+          <div class="equipo-nombre">{{ equipamiento.Ficha?.ArtNombre || 'Ninguna' }}</div>
+        </div>
+
+        <!-- Tablero -->
+        <div class="equipo-card" (click)="irACambiarEquipo()">
+          <div class="equipo-preview" [ngClass]="getItemClass(equipamiento.Tablero)">
+            <div class="forma-tablero">
+              <span></span><span></span>
+              <span></span><span></span>
+            </div>
+          </div>
+          <div class="equipo-tipo">Tablero</div>
+          <div class="equipo-nombre">{{ equipamiento.Tablero?.ArtNombre || 'Ninguno' }}</div>
+        </div>
+
+        <!-- Dado -->
+        <div class="equipo-card" (click)="irACambiarEquipo()">
+          <div class="equipo-preview" [ngClass]="getItemClass(equipamiento.Dado)">
+            <div class="forma-dado">
+              <i></i><i></i><i></i><i></i><i></i>
+            </div>
+          </div>
+          <div class="equipo-tipo">Dado</div>
+          <div class="equipo-nombre">{{ equipamiento.Dado?.ArtNombre || 'Ninguno' }}</div>
+        </div>
+
+      </div>
+
+      <div class="equipo-hint" *ngIf="equipamiento">
+        Tocá cualquiera para cambiarlo en la tienda
       </div>
 
       <!-- ── Historial de partidas recientes ──────────────────── -->

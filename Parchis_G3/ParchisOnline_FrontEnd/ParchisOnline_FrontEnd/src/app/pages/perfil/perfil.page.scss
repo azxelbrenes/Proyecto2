@@ -99,7 +99,7 @@
       flex:            1;
     }
 
-    .btn-guardar { color: #4CAF50; font-size: 1.5rem; cursor: pointer; }
+    .btn-guardar  { color: #4CAF50; font-size: 1.5rem; cursor: pointer; }
     .btn-cancelar { color: #FF6B6B; font-size: 1.5rem; cursor: pointer; }
   }
 
@@ -144,7 +144,7 @@
   ion-icon { color: #FFC300; font-size: 1.1rem; }
 }
 
-// ── Grid de estadísticas ──────────────────────────────────────────
+// ── Grid de estadísticas ─────────────────────────────────────────
 .stats-grid {
   display:               grid;
   grid-template-columns: 1fr 1fr;
@@ -177,7 +177,196 @@
   &.stat-porcentaje { background: linear-gradient(150deg, #D69E2E, #975A16); }
 }
 
-// ── Historial de partidas ──────────────────────────────────────────
+// ── Botón de Ranking ─────────────────────────────────────────────
+.btn-ranking {
+  display:        flex;
+  align-items:    center;
+  gap:            0.8rem;
+  background:     linear-gradient(135deg, rgba(255,195,0,0.16), rgba(255,140,0,0.07));
+  border:         1px solid rgba(255, 195, 0, 0.35);
+  border-radius:  14px;
+  padding:        0.85rem 1rem;
+  margin-top:     1.2rem;
+  cursor:         pointer;
+  transition:     transform 0.15s ease;
+
+  &:active { transform: scale(0.98); }
+
+  .ranking-icono {
+    font-size: 1.9rem;
+    filter:    drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  }
+
+  .ranking-texto {
+    flex: 1;
+
+    strong {
+      display:     block;
+      color:       #FFDD55;
+      font-size:   0.9rem;
+      font-weight: 800;
+    }
+
+    span {
+      color:     rgba(255, 255, 255, 0.5);
+      font-size: 0.72rem;
+    }
+  }
+
+  ion-icon {
+    color:     rgba(255, 195, 0, 0.6);
+    font-size: 1.3rem;
+  }
+}
+
+// ── Grid de equipamiento ─────────────────────────────────────────
+.equipamiento-grid {
+  display:               grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap:                   0.6rem;
+}
+
+.equipo-card {
+  display:        flex;
+  flex-direction: column;
+  align-items:    center;
+  background:     rgba(255, 255, 255, 0.05);
+  border:         1px solid rgba(255, 255, 255, 0.1);
+  border-radius:  14px;
+  padding:        0.8rem 0.4rem;
+  cursor:         pointer;
+  transition:     transform 0.15s ease, border-color 0.15s ease;
+
+  &:active { transform: scale(0.96); }
+  &:hover  { border-color: rgba(255, 195, 0, 0.4); }
+
+  .equipo-preview {
+    width:           50px;
+    height:          50px;
+    border-radius:   12px;
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+    margin-bottom:   0.5rem;
+    box-shadow:      inset 0 2px 5px rgba(0,0,0,0.3), 0 3px 8px rgba(0,0,0,0.3);
+  }
+
+  .equipo-tipo {
+    color:          rgba(255, 255, 255, 0.4);
+    font-size:      0.62rem;
+    font-weight:    700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .equipo-nombre {
+    color:       white;
+    font-size:   0.68rem;
+    font-weight: 700;
+    text-align:  center;
+    margin-top:  0.15rem;
+    line-height: 1.2;
+  }
+}
+
+.equipo-hint {
+  text-align: center;
+  color:      rgba(255, 255, 255, 0.3);
+  font-size:  0.68rem;
+  margin-top: 0.5rem;
+  font-style: italic;
+}
+
+// ── Formas de los artículos (mismo estilo que la tienda) ─────────
+// Usan currentColor para heredar el tono de la clase del artículo
+.forma-ficha {
+  width:         26px;
+  height:        26px;
+  border-radius: 50%;
+  background:    currentColor;
+  box-shadow:    inset 0 -2px 4px rgba(0,0,0,0.3),
+                 inset 0  2px 4px rgba(255,255,255,0.25);
+}
+
+.forma-tablero {
+  display:               grid;
+  grid-template-columns: 1fr 1fr;
+  gap:                   2px;
+  width:                 28px;
+  height:                28px;
+
+  span {
+    background:    currentColor;
+    border-radius: 2px;
+    opacity:       0.9;
+
+    &:nth-child(1), &:nth-child(4) { opacity: 0.55; }
+  }
+}
+
+.forma-dado {
+  position:      relative;
+  width:         30px;
+  height:        30px;
+  background:    rgba(255,255,255,0.9);
+  border-radius: 6px;
+
+  i {
+    position:      absolute;
+    width:         5px;
+    height:        5px;
+    border-radius: 50%;
+    background:    currentColor;
+
+    &:nth-child(1) { top: 4px; left: 4px;  }
+    &:nth-child(2) { top: 4px; right: 4px; }
+    &:nth-child(3) { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+    &:nth-child(4) { bottom: 4px; left: 4px;  }
+    &:nth-child(5) { bottom: 4px; right: 4px; }
+  }
+}
+
+// ── Identidad visual por artículo (igual que la tienda) ──────────
+.item-clasico {
+  background: linear-gradient(150deg, #8E9AAF, #5C6478);
+  color:      #E8ECF2;
+}
+
+.item-dorado {
+  background: linear-gradient(150deg, #FFDE59, #C99A0E);
+  color:      #FFF6D0;
+}
+
+.item-cristal {
+  background: linear-gradient(150deg, rgba(180,230,255,0.85), rgba(90,160,210,0.55));
+  color:      #FFFFFF;
+}
+
+.item-neon {
+  background: linear-gradient(150deg, #FF3DCE, #7B2FF7);
+  color:      #FFE9FB;
+  box-shadow: 0 0 12px rgba(255, 61, 206, 0.5),
+              inset 0 2px 5px rgba(255,255,255,0.25);
+}
+
+.item-diamante {
+  background: linear-gradient(150deg, #B9F2FF, #4FC3E8 55%, #2A8BB0);
+  color:      #FFFFFF;
+  box-shadow: 0 0 14px rgba(120, 230, 255, 0.45),
+              inset 0 2px 6px rgba(255,255,255,0.5);
+}
+
+.item-madera {
+  background: linear-gradient(150deg, #A9723E, #6B4423);
+  color:      #E8CFA8;
+}
+
+.item-galaxia {
+  background: radial-gradient(circle at 30% 25%, #6B4FD8, #2A1B5E 70%, #120A2E);
+  color:      #D8CBFF;
+}
+
+// ── Historial de partidas ────────────────────────────────────────
 .historial-lista {
   display:        flex;
   flex-direction: column;
@@ -194,9 +383,9 @@
   border-radius:  12px;
   padding:        0.7rem 0.9rem;
 
-  &.item-victoria  { border-left-color: #4CAF50; }
-  &.item-derrota   { border-left-color: #E53E3E; }
-  &.item-abandono  { border-left-color: #D69E2E; }
+  &.item-victoria { border-left-color: #4CAF50; }
+  &.item-derrota  { border-left-color: #E53E3E; }
+  &.item-abandono { border-left-color: #D69E2E; }
 
   .historial-icono { font-size: 1.3rem; }
 
@@ -226,18 +415,18 @@
 
 // ── Botón de logout ──────────────────────────────────────────────
 .btn-logout {
-  --background:      rgba(255, 107, 107, 0.15);
-  --color:           #FF6B6B;
-  --border-radius:   14px;
-  --box-shadow:      none;
-  border:            1px solid rgba(255, 107, 107, 0.35);
-  border-radius:     14px;
-  font-weight:       700;
-  height:            3rem;
-  margin-top:        1.6rem;
+  --background:    rgba(255, 107, 107, 0.15);
+  --color:         #FF6B6B;
+  --border-radius: 14px;
+  --box-shadow:    none;
+  border:          1px solid rgba(255, 107, 107, 0.35);
+  border-radius:   14px;
+  font-weight:     700;
+  height:          3rem;
+  margin-top:      1.6rem;
 }
 
-// ── Navbar inferior (mismo estilo del home/tienda) ─────────────────
+// ── Navbar inferior ──────────────────────────────────────────────
 .navbar-inferior {
   position:        fixed;
   bottom:          0;
