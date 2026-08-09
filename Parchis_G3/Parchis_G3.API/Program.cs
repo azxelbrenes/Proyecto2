@@ -99,8 +99,23 @@ builder.Services.AddSingleton<IChatLN, ChatLN>();
 // Mantiene el temporizador de 60 segundos de cada desconectado.
 builder.Services.AddSingleton<IAbandonoLN, AbandonoLN>();
 
-// -- SignalR --
-builder.Services.AddSignalR();
+// ================================================================
+// SIGNALR
+// ================================================================
+// IMPORTANTE: SignalR tiene su PROPIO serializador, independiente
+// del de los controllers. Configurar AddControllers().AddJsonOptions
+// no afecta al Hub.
+//
+// Sin AddJsonProtocol, el Hub manda camelCase (jugadores, fichas,
+// turnoActualJpId) mientras el frontend lee PascalCase (Jugadores,
+// Fichas, TurnoActualJpId). El objeto llega pero todas sus
+// propiedades resultan undefined: el tablero se dibuja vacío, sin
+// fichas y sin barra de jugadores.
+builder.Services.AddSignalR()
+    .AddJsonProtocol(options =>
+    {
+        options.PayloadSerializerOptions.PropertyNamingPolicy = null;
+    });
 
 // ================================================================
 // RATE LIMITING — protección contra fuerza bruta y abuso
@@ -151,7 +166,7 @@ builder.Services.AddRateLimiter(options =>
         // Los WebSockets de SignalR no pasan por rate limiting —
         // una partida hace muchos mensajes y sería contraproducente
         if (contexto.Request.Path.StartsWithSegments("/hubs"))
-            return RateLimitPartition.GetNoLimiter("signalr");
+            return RateLimitPartition.GetNoLimiter<string>("signalr");
 
         return RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: contexto.Connection.RemoteIpAddress?.ToString() ?? "desconocida",
@@ -249,6 +264,8 @@ builder.Services.AddCors(options =>
 // ================================================================
 // PropertyNamingPolicy = null mantiene PascalCase en el JSON,
 // que es lo que espera el frontend Ionic.
+// Ojo: esto SOLO aplica a los controllers. El Hub de SignalR se
+// configura por separado más arriba.
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {

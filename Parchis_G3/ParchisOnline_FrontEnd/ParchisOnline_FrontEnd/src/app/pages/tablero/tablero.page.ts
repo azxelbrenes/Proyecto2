@@ -16,8 +16,8 @@ import { SignalRService } from '../../services/signalr.service';
 import { PartidaService } from '../../services/partida.service';
 import { AuthService } from '../../services/auth';
 import {
-  ANILLO, CASAS, RECTA_FINAL,
-  obtenerCelda, esCasillaSegura, esSeguroExtra
+  InfoCelda, construirMapaCeldas, obtenerCelda, validarAnillo,
+  POS_CASA, POS_CORONADA
 } from './tablero.config';
 
 @Component({
@@ -25,9 +25,6 @@ import {
   templateUrl: './tablero.page.html',
   styleUrls:   ['./tablero.page.scss'],
   standalone:  true,
-  // FormsModule es necesario para el [(ngModel)] del input del chat.
-  // No importamos IonSpinner ni IonButton porque el tablero no los
-  // usa: el dado y los botones son divs con estilos propios.
   imports: [CommonModule, FormsModule, IonContent, IonIcon]
 })
 export class TableroPage implements OnInit, OnDestroy {
@@ -38,18 +35,24 @@ export class TableroPage implements OnInit, OnDestroy {
   usuId: number = 0;
 
   // ── Estado del juego ──────────────────────────────────────────
-  estado:    any     = null;   // Foto completa del tablero
+  estado:    any     = null;
   cargando:  boolean = true;
   miColor:   string  = '';
   esMiTurno: boolean = false;
 
   // ── Dado ──────────────────────────────────────────────────────
   valorDado:      number  = 0;
-  dadoTirado:     boolean = false;   // ¿ya tiró y falta mover?
+  dadoTirado:     boolean = false;
   girandoDado:    boolean = false;
   esperandoMover: boolean = false;
 
-  // Fichas que se pueden mover con el dado actual
+  // El dado tiene que girar un mínimo de tiempo para que se vea.
+  // El Hub responde en ~30 ms, así que sin esto la animación de
+  // 450 ms se apagaba antes de completar media vuelta.
+  private readonly DURACION_MIN_DADO = 750;
+  private tsTiroDado: number = 0;
+  private timerDado:  any    = null;
+
   fichasMovibles: number[] = [];
 
   // ── Chat ──────────────────────────────────────────────────────
@@ -58,7 +61,6 @@ export class TableroPage implements OnInit, OnDestroy {
   mensajeTexto:     string  = '';
   mensajesNoLeidos: number  = 0;
 
-  // Los 4 mensajes rápidos de la HU-14
   mensajesRapidos = [
     '¡Buena jugada!',
     '¡Eso te pasa!',
@@ -66,12 +68,17 @@ export class TableroPage implements OnInit, OnDestroy {
     '¡Gg!'
   ];
 
-  // ── Notificaciones flotantes ─────────────────────────────────
   aviso: string | null = null;
 
-  // Para renderizar el grid de 15×15 en el HTML
   filas    = Array.from({ length: 15 }, (_, i) => i + 1);
   columnas = Array.from({ length: 15 }, (_, i) => i + 1);
+
+  // ── Mapas precalculados ───────────────────────────────────────
+  // El tablero es estático: sus 225 celdas se calculan una vez.
+  // Las fichas cambian, pero solo cuando llega un estado nuevo,
+  // no en cada ciclo de detección de cambios.
+  private mapaCeldas: Map<string, InfoCelda> = new Map();
+  private mapaFichas: Map<string, any[]>     = new Map();
 
   private subs: Subscription[] = [];
 
@@ -91,6 +98,16 @@ export class TableroPage implements OnInit, OnDestroy {
   }
 
   async ngOnInit(): Promise<void> {
+    this.mapaCeldas = construirMapaCeldas();
+
+    // Autochequeo de la geometría del anillo. Solo en desarrollo:
+    // si algún día alguien toca las coordenadas, salta acá y no en
+    // la defensa del proyecto.
+    const errores = validarAnillo();
+    if (errores.length > 0) {
+      console.error('Geometría del tablero inválida:', errores);
+    }
+
     this.parId = Number(this.route.snapshot.queryParamMap.get('parId'));
     this.jpId  = Number(this.route.snapshot.queryParamMap.get('jpId'));
 
@@ -107,7 +124,7 @@ export class TableroPage implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    // Limpiamos las suscripciones para evitar memory leaks
+    if (this.timerDado) clearTimeout(this.timerDado);
     this.subs.forEach(s => s.unsubscribe());
   }
 
@@ -126,44 +143,35 @@ export class TableroPage implements OnInit, OnDestroy {
     await this.signalR.unirseAPartida(this.parId, this.jpId);
   }
 
-  // ── registrarEventos ─────────────────────────────────────────
-  // Nos suscribimos a todos los eventos que manda el Hub
   private registrarEventos(): void {
 
-    // ── Estado completo del tablero ──────────────────────────
     this.subs.push(
       this.signalR.onEstadoActualizado$.subscribe((estado) => {
         this.aplicarEstado(estado);
       })
     );
 
-    // ── Alguien tiró el dado ─────────────────────────────────
     this.subs.push(
       this.signalR.onDadoTirado$.subscribe((resultado) => {
         this.procesarDado(resultado);
       })
     );
 
-    // ── Alguien movió una ficha ──────────────────────────────
     this.subs.push(
       this.signalR.onFichaMovida$.subscribe((resultado) => {
         this.procesarMovimiento(resultado);
       })
     );
 
-    // ── La partida terminó ───────────────────────────────────
     this.subs.push(
       this.signalR.onPartidaFinalizada$.subscribe((resultado) => {
         this.mostrarVictoria(resultado);
       })
     );
 
-    // ── Chat ─────────────────────────────────────────────────
     this.subs.push(
       this.signalR.onMensajeRecibido$.subscribe((mensaje) => {
         this.mensajes.push(mensaje);
-
-        // Si el chat está cerrado, contamos el mensaje como no leído
         if (!this.mostrarChat) {
           this.mensajesNoLeidos++;
         }
@@ -176,7 +184,6 @@ export class TableroPage implements OnInit, OnDestroy {
       })
     );
 
-    // ── Desconexiones ────────────────────────────────────────
     this.subs.push(
       this.signalR.onJugadorDesconectado$.subscribe((datos) => {
         this.marcarDesconectado(datos.jpId, true);
@@ -197,7 +204,6 @@ export class TableroPage implements OnInit, OnDestroy {
       })
     );
 
-    // ── Errores del servidor ─────────────────────────────────
     this.subs.push(
       this.signalR.onError$.subscribe(async (mensaje) => {
         this.esperandoMover = false;
@@ -215,18 +221,40 @@ export class TableroPage implements OnInit, OnDestroy {
     this.estado   = estado;
     this.cargando = false;
 
-    // Buscamos nuestro color entre los jugadores
     const yo = estado.Jugadores?.find((j: any) => j.JpId === this.jpId);
     this.miColor = yo?.Color ?? '';
 
-    // ¿Es nuestro turno?
     this.esMiTurno = estado.TurnoActualJpId === this.jpId;
 
-    // Si no es nuestro turno, limpiamos el dado
     if (!this.esMiTurno) {
       this.dadoTirado     = false;
       this.fichasMovibles = [];
     }
+
+    this.reconstruirMapaFichas();
+  }
+
+  // ── reconstruirMapaFichas ────────────────────────────────────
+  // Agrupa las 16 fichas por celda una sola vez. El template pasa
+  // de hacer 225 filtrados por ciclo a 225 lookups O(1).
+  private reconstruirMapaFichas(): void {
+    const mapa = new Map<string, any[]>();
+
+    const fichas = this.estado?.Fichas ?? [];
+
+    for (const ficha of fichas) {
+      const celda = obtenerCelda(ficha.Posicion, ficha.Color, ficha.NumeroFicha);
+      const clave = `${celda.fila}-${celda.columna}`;
+
+      const lista = mapa.get(clave);
+      if (lista) {
+        lista.push(ficha);
+      } else {
+        mapa.set(clave, [ficha]);
+      }
+    }
+
+    this.mapaFichas = mapa;
   }
 
   // ================================================================
@@ -235,50 +263,55 @@ export class TableroPage implements OnInit, OnDestroy {
   private procesarDado(resultado: any): void {
     if (!resultado) return;
 
-    this.girandoDado = false;
-    this.valorDado   = resultado.ValorDado;
+    // Dejamos que el dado termine de girar antes de mostrar el
+    // resultado. Si el servidor tardó más que la animación, no
+    // esperamos nada extra.
+    const transcurrido = Date.now() - this.tsTiroDado;
+    const restante     = Math.max(0, this.DURACION_MIN_DADO - transcurrido);
 
-    // Actualizamos el estado del tablero
-    if (resultado.Estado) {
-      this.aplicarEstado(resultado.Estado);
-    }
+    if (this.timerDado) clearTimeout(this.timerDado);
 
-    // Si el turno sigue siendo nuestro, hay que mover una ficha
-    if (resultado.SiguienteTurnoJpId === this.jpId && this.esMiTurno) {
-      this.dadoTirado = true;
-      this.calcularFichasMovibles();
-    } else {
-      this.dadoTirado     = false;
-      this.fichasMovibles = [];
-    }
+    this.timerDado = setTimeout(() => {
+      this.girandoDado = false;
+      this.valorDado   = resultado.ValorDado;
 
-    // Mensajes especiales del motor (tres 5's, sin movimientos, etc.)
-    if (resultado.Mensaje) {
-      this.mostrarAviso(resultado.Mensaje);
-    }
+      if (resultado.Estado) {
+        this.aplicarEstado(resultado.Estado);
+      }
+
+      if (resultado.SiguienteTurnoJpId === this.jpId && this.esMiTurno) {
+        this.dadoTirado = true;
+        this.calcularFichasMovibles();
+      } else {
+        this.dadoTirado     = false;
+        this.fichasMovibles = [];
+      }
+
+      if (resultado.Mensaje) {
+        this.mostrarAviso(resultado.Mensaje);
+      }
+    }, restante);
   }
 
   // ── calcularFichasMovibles ───────────────────────────────────
-  // Determina qué fichas se pueden mover con el dado actual.
-  // Esto es solo para resaltar visualmente — el servidor valida
-  // de nuevo cuando el jugador elige. Si el cliente mintiera,
-  // el backend lo rechaza.
+  // Solo para resaltar visualmente. El servidor revalida cuando el
+  // jugador elige, así que un cliente que mienta no gana nada.
   private calcularFichasMovibles(): void {
     this.fichasMovibles = [];
 
-    const misFichas = this.getMisFichas();
+    for (const ficha of this.getMisFichas()) {
+      if (ficha.Posicion >= POS_CORONADA) continue;
 
-    for (const ficha of misFichas) {
-      if (ficha.Estado === 'CORONADA') continue;
-
-      // En casa: solo sale con 5
-      if (ficha.Posicion === 0 && this.valorDado === 5) {
-        this.fichasMovibles.push(ficha.NumeroFicha);
+      // En casa: solo sale con un 5
+      if (ficha.Posicion === POS_CASA) {
+        if (this.valorDado === 5) {
+          this.fichasMovibles.push(ficha.NumeroFicha);
+        }
         continue;
       }
 
-      // En el tablero: debe caer exacto sin pasarse de 68
-      if (ficha.Posicion > 0 && ficha.Posicion + this.valorDado <= 68) {
+      // En juego: hay que caer exacto en el centro, sin pasarse
+      if (ficha.Posicion + this.valorDado <= POS_CORONADA) {
         this.fichasMovibles.push(ficha.NumeroFicha);
       }
     }
@@ -298,40 +331,33 @@ export class TableroPage implements OnInit, OnDestroy {
       this.aplicarEstado(resultado.Estado);
     }
 
-    // Avisos de eventos especiales
-    if (resultado.HuboCaptura) {
-      this.mostrarAviso('¡Captura! 🎯');
-    }
-
-    if (resultado.FichaCoronada) {
-      this.mostrarAviso('¡Ficha coronada! 👑');
-    }
-
-    if (resultado.Mensaje) {
-      this.mostrarAviso(resultado.Mensaje);
-    }
+    if (resultado.HuboCaptura)   this.mostrarAviso('¡Captura!');
+    if (resultado.FichaCoronada) this.mostrarAviso('¡Ficha coronada!');
+    if (resultado.Mensaje)       this.mostrarAviso(resultado.Mensaje);
   }
 
   // ================================================================
   // ACCIONES DEL JUGADOR
   // ================================================================
-
-  // ── tirarDado ────────────────────────────────────────────────
   async tirarDado(): Promise<void> {
     if (!this.esMiTurno || this.dadoTirado || this.girandoDado) return;
 
     this.girandoDado = true;
+    this.valorDado   = 0;
+    this.tsTiroDado  = Date.now();
+
     await this.signalR.tirarDado(this.parId, this.jpId);
 
-    // Si el servidor no responde en 3 segundos, quitamos la animación
-    // para que el botón no quede trabado
-    setTimeout(() => { this.girandoDado = false; }, 3000);
+    // Red de seguridad: si el servidor no contesta, el dado no
+    // queda girando para siempre.
+    setTimeout(() => {
+      if (this.girandoDado && Date.now() - this.tsTiroDado >= 3000) {
+        this.girandoDado = false;
+      }
+    }, 3100);
   }
 
-  // ── moverFicha ───────────────────────────────────────────────
   async moverFicha(ficha: any): Promise<void> {
-    // Solo podemos mover nuestras fichas, en nuestro turno,
-    // y si están marcadas como movibles
     if (!this.esMiTurno || !this.dadoTirado || this.esperandoMover) return;
     if (ficha.JpId !== this.jpId) return;
     if (!this.fichasMovibles.includes(ficha.NumeroFicha)) return;
@@ -343,7 +369,6 @@ export class TableroPage implements OnInit, OnDestroy {
     );
   }
 
-  // ── abandonarPartida ─────────────────────────────────────────
   async abandonarPartida(): Promise<void> {
     const alert = await this.alertController.create({
       cssClass: 'alert-parchis',
@@ -369,7 +394,6 @@ export class TableroPage implements OnInit, OnDestroy {
   // ================================================================
   toggleChat(): void {
     this.mostrarChat = !this.mostrarChat;
-
     if (this.mostrarChat) {
       this.mensajesNoLeidos = 0;
     }
@@ -388,114 +412,50 @@ export class TableroPage implements OnInit, OnDestroy {
   }
 
   // ================================================================
-  // RENDERIZADO DEL TABLERO
+  // RENDERIZADO DEL TABLERO — todo O(1)
   // ================================================================
-
-  // ── getFichasEnCelda ─────────────────────────────────────────
-  // Devuelve las fichas que están en una celda del grid.
-  // Puede haber más de una (bloqueo o fichas apiladas en casa).
-  getFichasEnCelda(fila: number, columna: number): any[] {
-    if (!this.estado?.Fichas) return [];
-
-    return this.estado.Fichas.filter((ficha: any) => {
-      const celda = obtenerCelda(ficha.Posicion, ficha.Color, ficha.NumeroFicha);
-      return celda.fila === fila && celda.columna === columna;
-    });
+  getClaseCelda(fila: number, columna: number): string {
+    return this.mapaCeldas.get(`${fila}-${columna}`)?.clases ?? 'celda-vacia';
   }
 
-  // ── getTipoCelda ─────────────────────────────────────────────
-  // Determina qué clase CSS lleva cada celda del grid: si es parte
-  // del anillo, de una casa, de una recta final, o si está vacía.
-  getTipoCelda(fila: number, columna: number): string {
-    // ¿Es el centro? (la meta)
-    if (fila >= 7 && fila <= 9 && columna >= 7 && columna <= 9) {
-      return 'celda-meta';
-    }
-
-    // ¿Es una casilla del anillo?
-    const indiceAnillo = ANILLO.findIndex(
-      c => c.fila === fila && c.columna === columna
-    );
-
-    if (indiceAnillo >= 0) {
-      // Las casillas de salida son seguras y llevan el color del dueño
-      if (esCasillaSegura(indiceAnillo)) {
-        const colores = ['rojo', 'azul', 'verde', 'amarillo'];
-        const indice  = [0, 17, 34, 51].indexOf(indiceAnillo);
-        return `celda-anillo celda-salida celda-salida-${colores[indice]}`;
-      }
-      return 'celda-anillo';
-    }
-
-    // ¿Es parte de una recta final?
-    for (const color of Object.keys(RECTA_FINAL)) {
-      const esRecta = RECTA_FINAL[color].some(
-        c => c.fila === fila && c.columna === columna
-      );
-      if (esRecta) {
-        return `celda-recta celda-recta-${color.toLowerCase()}`;
-      }
-    }
-
-    // ¿Es parte de una casa?
-    for (const color of Object.keys(CASAS)) {
-      const esCasa = CASAS[color].some(
-        c => c.fila === fila && c.columna === columna
-      );
-      if (esCasa) {
-        return `celda-casa celda-casa-${color.toLowerCase()}`;
-      }
-    }
-
-    return 'celda-vacia';
-  }
-
-  // ── getZonaCasa ──────────────────────────────────────────────
-  // Las casas son bloques de 6×6 en las esquinas. Esto detecta
-  // si una celda está dentro de esa zona para pintarle el fondo.
-  getZonaCasa(fila: number, columna: number): string {
-    if (fila >= 10 && fila <= 15 && columna >= 1  && columna <= 4)  return 'zona-rojo';
-    if (fila >= 1  && fila <= 6  && columna >= 1  && columna <= 4)  return 'zona-azul';
-    if (fila >= 1  && fila <= 6  && columna >= 11 && columna <= 15) return 'zona-verde';
-    if (fila >= 10 && fila <= 15 && columna >= 11 && columna <= 15) return 'zona-amarillo';
-    return '';
-  }
-
-  // ── tieneEstrella ────────────────────────────────────────────
-  // Marca las casillas de seguro con una estrella, igual que en
-  // un tablero de Parchís real.
   tieneEstrella(fila: number, columna: number): boolean {
-    const indiceAnillo = ANILLO.findIndex(
-      c => c.fila === fila && c.columna === columna
-    );
-
-    if (indiceAnillo < 0) return false;
-
-    return esSeguroExtra(indiceAnillo);
+    return this.mapaCeldas.get(`${fila}-${columna}`)?.estrella ?? false;
   }
 
-  // ── getPuntos ────────────────────────────────────────────────
-  // Devuelve un array del tamaño del valor del dado, para poder
-  // renderizar esa cantidad de puntos con *ngFor.
-  //
-  // Lo hacemos en un método porque usar [].constructor(n) directo
-  // en el HTML confunde al compilador de Angular.
+  getFichasEnCelda(fila: number, columna: number): any[] {
+    return this.mapaFichas.get(`${fila}-${columna}`) ?? [];
+  }
+
+  // trackBy para que Angular no destruya y recree los divs de las
+  // fichas en cada render. Sin esto la transición CSS nunca corre,
+  // porque el elemento animado es siempre uno nuevo.
+  trackFicha(_indice: number, ficha: any): string {
+    return `${ficha.JpId}-${ficha.NumeroFicha}`;
+  }
+
+  trackIndice(indice: number): number {
+    return indice;
+  }
+
   getPuntos(): number[] {
     return Array.from({ length: this.valorDado }, (_, i) => i);
   }
 
-  // ── getColorJugadorActual ────────────────────────────────────
-  // El color de quien tiene el turno, para pintar la ficha
-  // indicadora del banner inferior.
   getColorJugadorActual(): string {
     const jugador = this.getJugadores().find(
       (j: any) => j.JpId === this.estado?.TurnoActualJpId
     );
-    return jugador?.Color ?? 'ROJO';
+    return jugador?.Color ?? 'AZUL';
   }
 
-  // ── esFichaMovible ───────────────────────────────────────────
-  // Para resaltar visualmente las fichas que se pueden mover
+  getNombreJugadorActual(): string {
+    const jugador = this.getJugadores().find(
+      (j: any) => j.JpId === this.estado?.TurnoActualJpId
+    );
+    if (!jugador) return '...';
+    return jugador.EsBot ? `${jugador.Nombre} (bot)` : jugador.Nombre;
+  }
+
   esFichaMovible(ficha: any): boolean {
     return this.esMiTurno
         && this.dadoTirado
@@ -503,34 +463,21 @@ export class TableroPage implements OnInit, OnDestroy {
         && this.fichasMovibles.includes(ficha.NumeroFicha);
   }
 
-  // ── getMisFichas ─────────────────────────────────────────────
   getMisFichas(): any[] {
     return this.estado?.Fichas?.filter((f: any) => f.JpId === this.jpId) ?? [];
   }
 
-  // ── getJugadores ─────────────────────────────────────────────
   getJugadores(): any[] {
     return this.estado?.Jugadores ?? [];
   }
 
-  // ── esTurnoDe ────────────────────────────────────────────────
   esTurnoDe(jpId: number): boolean {
     return this.estado?.TurnoActualJpId === jpId;
-  }
-
-  // ── getNombreJugadorActual ───────────────────────────────────
-  getNombreJugadorActual(): string {
-    const jugador = this.getJugadores().find(
-      (j: any) => j.JpId === this.estado?.TurnoActualJpId
-    );
-    return jugador?.Nombre ?? '...';
   }
 
   // ================================================================
   // HELPERS
   // ================================================================
-
-  // Marca visualmente a un jugador como desconectado
   private marcarDesconectado(jpId: number, desconectado: boolean): void {
     const jugador = this.getJugadores().find((j: any) => j.JpId === jpId);
     if (jugador) {
@@ -538,13 +485,11 @@ export class TableroPage implements OnInit, OnDestroy {
     }
   }
 
-  // Aviso flotante que desaparece solo
   private mostrarAviso(texto: string): void {
     this.aviso = texto;
     setTimeout(() => { this.aviso = null; }, 2500);
   }
 
-  // ── mostrarVictoria ──────────────────────────────────────────
   private async mostrarVictoria(resultado: any): Promise<void> {
     const gane = resultado.GanadorJpId === this.jpId;
 
@@ -554,7 +499,7 @@ export class TableroPage implements OnInit, OnDestroy {
 
     const alert = await this.alertController.create({
       cssClass:        'alert-parchis',
-      header:          gane ? '🏆 ¡Ganaste!' : 'Partida terminada',
+      header:          gane ? '¡Ganaste!' : 'Partida terminada',
       message:         gane
         ? '¡Felicitaciones! El premio ya está en tu cuenta.'
         : `Ganó ${ganador?.Nombre ?? 'otro jugador'}. ¡Mejor suerte la próxima!`,

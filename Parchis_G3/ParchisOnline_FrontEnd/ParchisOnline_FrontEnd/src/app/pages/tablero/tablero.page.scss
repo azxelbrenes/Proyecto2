@@ -1,3 +1,18 @@
+$rojo:     #E53935;
+$azul:     #1E88E5;
+$verde:    #43A047;
+$amarillo: #FDD835;
+
+$dorado:      #FFC300;
+$dorado-claro: #FFDD55;
+
+$fondo-oscuro: #1C1230;
+$madera:       #5D3A1A;
+$madera-borde: #7A4E24;
+
+$hueso: #EDE7D8;   // celdas fuera del recorrido
+$blanco-casilla: #FFFFFF;
+
 .tablero-content {
   --background: radial-gradient(circle at top, #2D1B4E 0%, #1C1230 45%, #0D0818 100%);
 }
@@ -62,11 +77,25 @@
     white-space:   nowrap;
   }
 
+  // Etiqueta para distinguir un bot de un jugador real
+  .chip-badge-bot {
+    position:       absolute;
+    top:            0.15rem;
+    left:           0.2rem;
+    background:     rgba(255, 255, 255, 0.16);
+    color:          rgba(255, 255, 255, 0.75);
+    font-size:      0.45rem;
+    font-weight:    800;
+    letter-spacing: 0.05em;
+    padding:        0.05rem 0.25rem;
+    border-radius:  4px;
+  }
+
   // Flecha que señala a quien le toca
   .chip-indicador {
     position:  absolute;
     bottom:    -2px;
-    color:     #FFC300;
+    color:     $dorado;
     font-size: 0.6rem;
     animation: rebotarFlecha 1s ease-in-out infinite;
   }
@@ -85,17 +114,19 @@
     border-color: rgba(255, 195, 0, 0.75);
     transform:    scale(1.04);
 
-    .chip-nombre { color: #FFDD55; }
+    .chip-nombre { color: $dorado-claro; }
   }
+
+  &.chip-bot .chip-nombre { opacity: 0.85; }
 
   &.chip-desconectado { opacity: 0.45; }
 }
 
 // Barra de color según el jugador
-.chip-rojo     { border-bottom: 3px solid #E53935; }
-.chip-azul     { border-bottom: 3px solid #1E88E5; }
-.chip-verde    { border-bottom: 3px solid #43A047; }
-.chip-amarillo { border-bottom: 3px solid #FDD835; }
+.chip-rojo     { border-bottom: 3px solid $rojo;     }
+.chip-azul     { border-bottom: 3px solid $azul;     }
+.chip-verde    { border-bottom: 3px solid $verde;    }
+.chip-amarillo { border-bottom: 3px solid $amarillo; }
 
 // ── Aviso flotante ───────────────────────────────────────────────
 .aviso-flotante {
@@ -104,7 +135,7 @@
   left:          50%;
   transform:     translateX(-50%);
   background:    rgba(255, 195, 0, 0.96);
-  color:         #1C1230;
+  color:         $fondo-oscuro;
   font-size:     0.8rem;
   font-weight:   800;
   padding:       0.45rem 1.1rem;
@@ -125,19 +156,22 @@
   min-height:      0;
 }
 
+// IMPORTANTE: este grid debe tener exactamente 225 hijos, ni uno
+// más. Un elemento extra con grid-area explícito hace que las
+// celdas auto-colocadas esquiven esas posiciones y todo el tablero
+// se corra. Por eso el centro se dibuja con el background de sus
+// propias celdas y no con un elemento superpuesto.
 .tablero-grid {
   display:               grid;
   grid-template-columns: repeat(15, 1fr);
   grid-template-rows:    repeat(15, 1fr);
   gap:                   1px;
 
-  // Siempre cuadrado, adaptado al espacio disponible
   width:  min(94vw, 56vh, 430px);
   height: min(94vw, 56vh, 430px);
 
-  // Marco de madera como el tablero real
-  background:    #5D3A1A;
-  border:        6px solid #7A4E24;
+  background:    $madera;
+  border:        6px solid $madera-borde;
   border-radius: 8px;
   padding:       4px;
   box-shadow:    0 8px 28px rgba(0, 0, 0, 0.6),
@@ -152,67 +186,123 @@
   justify-content: center;
 }
 
-// Celda vacía: fondo blanco del tablero
-.celda-vacia { background: #F5F0E6; }
+// Fuera del recorrido: un hueso apagado, para que contraste con el
+// blanco puro de las casillas por donde sí se avanza
+.celda-vacia {
+  background: $hueso;
+}
 
 // Casilla normal del anillo
 .celda-anillo {
-  background: #FFFFFF;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+  background: $blanco-casilla;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.28);
 }
 
 // ── Casillas de salida (llevan el color del dueño) ───────────────
-.celda-salida-rojo     { background: #E53935; }
-.celda-salida-azul     { background: #1E88E5; }
-.celda-salida-verde    { background: #43A047; }
-.celda-salida-amarillo { background: #FDD835; }
-
 .celda-salida {
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3);
 }
 
-// ── Rectas finales — el pasillo de color del medio ───────────────
-.celda-recta-rojo     { background: #E53935; }
-.celda-recta-azul     { background: #1E88E5; }
-.celda-recta-verde    { background: #43A047; }
-.celda-recta-amarillo { background: #FDD835; }
+.celda-salida-rojo     { background: $rojo;     }
+.celda-salida-azul     { background: $azul;     }
+.celda-salida-verde    { background: $verde;    }
+.celda-salida-amarillo { background: $amarillo; }
 
+// ── Rectas finales — el pasillo de color hacia el centro ─────────
 .celda-recta {
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2);
 }
 
+.celda-recta-rojo     { background: $rojo;     }
+.celda-recta-azul     { background: $azul;     }
+.celda-recta-verde    { background: $verde;    }
+.celda-recta-amarillo { background: $amarillo; }
+
 // ── Estrella de casilla segura ───────────────────────────────────
 .estrella-seguro {
-  position:  absolute;
-  color:     rgba(0, 0, 0, 0.35);
-  font-size: 0.6rem;
-  z-index:   1;
+  position:    absolute;
+  color:       rgba(0, 0, 0, 0.55);
+  font-size:   0.7rem;
+  line-height: 1;
+  z-index:     1;
 }
 
-// ── Zonas de casa (bloques de las esquinas) ──────────────────────
-.zona-rojo     { background: #E53935; }
-.zona-azul     { background: #1E88E5; }
-.zona-verde    { background: #43A047; }
-.zona-amarillo { background: #FDD835; }
+// Sobre una salida, que es de color fuerte, la estrella va en blanco
+.celda-salida .estrella-seguro {
+  color: rgba(255, 255, 255, 0.9);
+}
 
-// Círculos donde esperan las fichas dentro de la casa
+// ── Zonas de casa (bloques 6×6 de las esquinas) ──────────────────
+.zona-rojo     { background: $rojo;     }
+.zona-azul     { background: $azul;     }
+.zona-verde    { background: $verde;    }
+.zona-amarillo { background: $amarillo; }
+
+// Los 4 huecos donde espera cada ficha. Son aros vacíos, no discos
+// blancos: un disco sólido se confunde con una ficha.
 .celda-casa {
-  background:    rgba(255, 255, 255, 0.9) !important;
+  background:    rgba(255, 255, 255, 0.18);
   border-radius: 50%;
-  box-shadow:    inset 0 0 0 2px rgba(0, 0, 0, 0.15);
+  box-shadow:    inset 0 0 0 2px rgba(255, 255, 255, 0.75);
 }
 
-// ── Centro / meta ────────────────────────────────────────────────
-.celda-meta {
-  background: #F5F0E6;
+// ================================================================
+// EL CENTRO — bloque 3×3 (filas 7-9, columnas 7-9)
+// ================================================================
+// Las cuatro cuñas se dibujan repartidas entre las 9 celdas:
+//   · 4 celdas de color plano (los brazos)
+//   · 4 esquinas partidas por la diagonal
+//   · 1 celda central donde se juntan las cuatro
+.celda-centro {
+  box-shadow: none;
 }
 
-// El centro exacto lleva el trofeo
-.meta-trofeo {
-  position:  absolute;
-  font-size: 1.3rem;
-  z-index:   3;
-  filter:    drop-shadow(0 2px 3px rgba(0,0,0,0.4));
+// Los brazos del rombo
+.centro-verde    { background: $verde;    }
+.centro-amarillo { background: $amarillo; }
+.centro-rojo     { background: $rojo;     }
+.centro-azul     { background: $azul;     }
+
+// Las esquinas. Los dos stops en 50% dan un corte diagonal duro en
+// lugar de un degradado.
+.centro-nw {
+  background: linear-gradient(to top right,    $azul 50%, $verde 50%);
+  box-shadow: inset  1px  1px 0 rgba(0, 0, 0, 0.3);
+}
+
+.centro-ne {
+  background: linear-gradient(to bottom right, $verde 50%, $amarillo 50%);
+  box-shadow: inset -1px  1px 0 rgba(0, 0, 0, 0.3);
+}
+
+.centro-sw {
+  background: linear-gradient(to bottom right, $azul 50%, $rojo 50%);
+  box-shadow: inset  1px -1px 0 rgba(0, 0, 0, 0.3);
+}
+
+.centro-se {
+  background: linear-gradient(to top right,    $rojo 50%, $amarillo 50%);
+  box-shadow: inset -1px -1px 0 rgba(0, 0, 0, 0.3);
+}
+
+// La celda del medio: las cuatro cuñas se encuentran en su centro
+.centro-medio {
+  background: conic-gradient(
+    $verde      0deg  45deg,
+    $amarillo  45deg 135deg,
+    $rojo     135deg 225deg,
+    $azul     225deg 315deg,
+    $verde    315deg 360deg
+  );
+}
+
+.centro-corona {
+  position:       absolute;
+  font-size:      0.85rem;
+  line-height:    1;
+  z-index:        4;
+  pointer-events: none;
+  filter:         drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7));
 }
 
 // ================================================================
@@ -238,8 +328,10 @@
   box-shadow:    0 2px 4px rgba(0, 0, 0, 0.6),
                  inset 0 -2px 3px rgba(0, 0, 0, 0.35),
                  inset 0  2px 3px rgba(255, 255, 255, 0.5);
-  // Transición suave al cambiar de celda: esto hace que el
-  // movimiento se vea animado sin código extra
+
+  // La transición hace que el movimiento se vea animado sin código
+  // extra. Solo funciona si el *ngFor usa trackBy: sin eso Angular
+  // recrea el elemento y nunca hay nada que animar.
   transition:    all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -254,11 +346,20 @@
 .ficha-verde    { background: radial-gradient(circle at 35% 30%, #81C784, #2E7D32); }
 .ficha-amarillo { background: radial-gradient(circle at 35% 30%, #FFF176, #F9A825); }
 
+// Aro extra para ubicar de un vistazo cuáles son las propias
+.ficha-mia {
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.95),
+              0 2px 4px rgba(0, 0, 0, 0.6),
+              inset 0 -2px 3px rgba(0, 0, 0, 0.35);
+}
+
 // ── Ficha que se puede mover ─────────────────────────────────────
+// Va después de .ficha-mia a propósito: si una ficha propia además
+// es movible, gana el resaltado dorado.
 .ficha-movible {
   cursor:     pointer;
   animation:  pulsoFicha 1.1s ease-in-out infinite;
-  box-shadow: 0 0 0 2px #FFC300,
+  box-shadow: 0 0 0 2px $dorado,
               0 0 12px rgba(255, 195, 0, 0.9),
               0 2px 4px rgba(0, 0, 0, 0.5);
   z-index:    10;
@@ -284,14 +385,13 @@
   border:         1px solid rgba(255, 255, 255, 0.1);
   transition:     all 0.3s ease;
 
-  // Ficha del color de quien juega
   .turno-color {
     width:         26px;
     height:        26px;
     border-radius: 50%;
     border:        2px solid rgba(255, 255, 255, 0.85);
     flex-shrink:   0;
-    box-shadow:    inset 0 -2px 3px rgba(0,0,0,0.3);
+    box-shadow:    inset 0 -2px 3px rgba(0, 0, 0, 0.3);
   }
 
   .turno-texto {
@@ -311,13 +411,12 @@
     font-size: 0.72rem;
   }
 
-  // Cuando es tu turno, todo el banner se resalta
   &.turno-mio {
     background:   rgba(255, 195, 0, 0.16);
     border-color: rgba(255, 195, 0, 0.5);
     animation:    pulsoTurno 2s ease-in-out infinite;
 
-    .turno-nombre { color: #FFDD55; }
+    .turno-nombre { color: $dorado-claro; }
     .turno-accion { color: rgba(255, 221, 85, 0.75); }
   }
 }
@@ -337,7 +436,6 @@
   gap:            0.3rem;
 }
 
-// ── El dado ──────────────────────────────────────────────────────
 .dado {
   width:           62px;
   height:          62px;
@@ -350,9 +448,8 @@
                    inset 0 -3px 6px rgba(0, 0, 0, 0.18),
                    inset 0  3px 6px rgba(255, 255, 255, 0.9);
   opacity:         0.5;
-  transition:      all 0.25s ease;
+  transition:      opacity 0.25s ease, box-shadow 0.25s ease;
 
-  // Activo solo cuando es tu turno y no tiraste todavía
   &.dado-activo {
     opacity:    1;
     cursor:     pointer;
@@ -365,15 +462,16 @@
     &:active { transform: scale(0.9); }
   }
 
+  // El componente garantiza 750 ms mínimo de giro, así que la
+  // animación alcanza a dar casi dos vueltas completas
   &.dado-girando {
     opacity:   1;
     animation: girarDado 0.45s linear infinite;
   }
 }
 
-// Etiqueta con el valor sacado
 .dado-valor {
-  color:       #FFDD55;
+  color:       $dorado-claro;
   font-size:   0.7rem;
   font-weight: 800;
 }
@@ -400,11 +498,11 @@
   width:         9px;
   height:        9px;
   border-radius: 50%;
-  background:    #1C1230;
+  background:    $fondo-oscuro;
   box-shadow:    inset 0 1px 2px rgba(0, 0, 0, 0.7);
 }
 
-// Posición de los puntos según la cantidad — patrón clásico
+// Patrón clásico de puntos según cuántos hay
 .dado-cara .punto:nth-child(1) { grid-area: 1 / 1; }
 .dado-cara .punto:nth-child(2) { grid-area: 3 / 3; }
 .dado-cara .punto:nth-child(3) { grid-area: 1 / 3; }
@@ -412,7 +510,8 @@
 .dado-cara .punto:nth-child(5) { grid-area: 2 / 2; }
 .dado-cara .punto:nth-child(6) { grid-area: 2 / 1; }
 
-// El 6 lleva dos puntos extra a los lados
+// Con 6 puntos no va ninguno en el medio: los dos últimos se
+// reparten a los costados
 .dado-cara .punto:nth-child(5):nth-last-child(2) { grid-area: 2 / 1; }
 .dado-cara .punto:nth-child(6):last-child        { grid-area: 2 / 3; }
 
@@ -430,7 +529,7 @@
   color:           rgba(255, 255, 255, 0.7);
   font-size:       1.25rem;
   cursor:          pointer;
-  transition:      all 0.15s ease;
+  transition:      transform 0.15s ease;
 
   &:active { transform: scale(0.9); }
 
@@ -448,7 +547,7 @@
   min-width:       19px;
   height:          19px;
   border-radius:   10px;
-  background:      #E53935;
+  background:      $rojo;
   color:           white;
   font-size:       0.6rem;
   font-weight:     900;
@@ -456,22 +555,22 @@
   align-items:     center;
   justify-content: center;
   padding:         0 5px;
-  border:          2px solid #1C1230;
+  border:          2px solid $fondo-oscuro;
 }
 
 // ================================================================
 // CHAT
 // ================================================================
 .chat-overlay {
-  position:        fixed;
-  inset:           0;
-  background:      rgba(8, 5, 16, 0.72);
+  position:                fixed;
+  inset:                   0;
+  background:              rgba(8, 5, 16, 0.72);
   -webkit-backdrop-filter: blur(4px);
-  backdrop-filter: blur(4px);
-  display:         flex;
-  align-items:     flex-end;
-  justify-content: center;
-  z-index:         100;
+  backdrop-filter:         blur(4px);
+  display:                 flex;
+  align-items:             flex-end;
+  justify-content:         center;
+  z-index:                 100;
 }
 
 .chat-panel {
@@ -495,7 +594,7 @@
   border-bottom:   1px solid rgba(255, 255, 255, 0.08);
 
   span {
-    color:       #FFDD55;
+    color:       $dorado-claro;
     font-weight: 800;
     font-size:   0.95rem;
   }
@@ -538,7 +637,6 @@
     word-break:  break-word;
   }
 
-  // Mis mensajes van a la derecha y en dorado
   &.mensaje-mio {
     align-self: flex-end;
     background: rgba(255, 195, 0, 0.18);
@@ -546,7 +644,6 @@
   }
 }
 
-// Color del nombre según el jugador
 .mensaje-rojo     .mensaje-autor { color: #FF8A80; }
 .mensaje-azul     .mensaje-autor { color: #82B1FF; }
 .mensaje-verde    .mensaje-autor { color: #A5D6A7; }
@@ -576,7 +673,7 @@
   flex-shrink:   0;
   background:    rgba(255, 195, 0, 0.14);
   border:        1px solid rgba(255, 195, 0, 0.3);
-  color:         #FFDD55;
+  color:         $dorado-claro;
   font-size:     0.75rem;
   font-weight:   700;
   padding:       0.4rem 0.8rem;
@@ -606,18 +703,18 @@
   outline:       none;
 
   &::placeholder { color: rgba(255, 255, 255, 0.3); }
-  &:focus { border-color: rgba(255, 195, 0, 0.5); }
+  &:focus        { border-color: rgba(255, 195, 0, 0.5); }
 }
 
 .btn-enviar {
   width:           40px;
   height:          40px;
   border-radius:   50%;
-  background:      linear-gradient(135deg, #FFC300, #E0A80E);
+  background:      linear-gradient(135deg, $dorado, #E0A80E);
   display:         flex;
   align-items:     center;
   justify-content: center;
-  color:           #1C1230;
+  color:           $fondo-oscuro;
   font-size:       1.1rem;
   cursor:          pointer;
   flex-shrink:     0;
@@ -628,7 +725,6 @@
 // ================================================================
 // ANIMACIONES
 // ================================================================
-
 @keyframes girarDado {
   from { transform: rotate(0deg);   }
   to   { transform: rotate(360deg); }
@@ -639,19 +735,18 @@
   50%      { transform: scale(1.07); }
 }
 
-// La ficha movible pulsa para indicar que se puede tocar
+// El pulso se mantiene en 1.12: más que eso y la ficha se sale de
+// su celda pisando las vecinas
 @keyframes pulsoFicha {
   0%, 100% { transform: scale(1);    }
-  50%      { transform: scale(1.25); }
+  50%      { transform: scale(1.12); }
 }
 
-// El banner de turno propio pulsa suavemente
 @keyframes pulsoTurno {
   0%, 100% { box-shadow: 0 0 0 0  rgba(255, 195, 0, 0.4); }
   50%      { box-shadow: 0 0 0 5px rgba(255, 195, 0, 0);   }
 }
 
-// La flecha del chip rebota para señalar el turno
 @keyframes rebotarFlecha {
   0%, 100% { transform: translateY(0);    }
   50%      { transform: translateY(-3px); }
@@ -665,4 +760,24 @@
 @keyframes subirChat {
   from { transform: translateY(100%); }
   to   { transform: translateY(0);    }
+}
+
+// ================================================================
+// ACCESIBILIDAD
+// ================================================================
+// Respeta la preferencia del sistema de reducir movimiento. Sin
+// esto, un tablero con cinco animaciones en bucle es molesto para
+// quien tiene sensibilidad al movimiento.
+@media (prefers-reduced-motion: reduce) {
+  .ficha,
+  .ficha-movible,
+  .dado,
+  .dado-activo,
+  .chip-indicador,
+  .turno-banner,
+  .aviso-flotante,
+  .chat-panel {
+    animation:  none !important;
+    transition: none !important;
+  }
 }

@@ -15,12 +15,15 @@
         *ngFor="let jugador of getJugadores()"
         [ngClass]="'chip-' + jugador.Color.toLowerCase()"
         [class.chip-turno]="esTurnoDe(jugador.JpId)"
+        [class.chip-bot]="jugador.EsBot"
         [class.chip-desconectado]="jugador.Desconectado">
 
         <div class="chip-avatar">{{ jugador.EsBot ? '🤖' : '🎮' }}</div>
         <div class="chip-nombre">{{ jugador.Nombre }}</div>
 
-        <!-- Indicador de que le toca -->
+        <!-- Etiqueta explícita para distinguir bots de humanos -->
+        <div class="chip-badge-bot" *ngIf="jugador.EsBot">BOT</div>
+
         <div class="chip-indicador" *ngIf="esTurnoDe(jugador.JpId)">▼</div>
 
         <ion-icon name="wifi-outline" class="chip-wifi" *ngIf="jugador.Desconectado"></ion-icon>
@@ -36,29 +39,29 @@
     <div class="tablero-wrapper">
       <div class="tablero-grid">
 
-        <ng-container *ngFor="let fila of filas">
+        <ng-container *ngFor="let fila of filas; trackBy: trackIndice">
           <div
-            *ngFor="let columna of columnas"
+            *ngFor="let columna of columnas; trackBy: trackIndice"
             class="celda"
-            [ngClass]="[getTipoCelda(fila, columna), getZonaCasa(fila, columna)]">
+            [ngClass]="getClaseCelda(fila, columna)">
 
             <!-- Estrella de casilla segura -->
             <span class="estrella-seguro" *ngIf="tieneEstrella(fila, columna)">★</span>
+
+            <!-- Corona en el centro exacto -->
+            <span class="centro-corona" *ngIf="fila === 8 && columna === 8">👑</span>
 
             <!-- Fichas que están en esta celda -->
             <div class="fichas-celda">
               <div
                 class="ficha"
-                *ngFor="let ficha of getFichasEnCelda(fila, columna)"
+                *ngFor="let ficha of getFichasEnCelda(fila, columna); trackBy: trackFicha"
                 [ngClass]="'ficha-' + ficha.Color.toLowerCase()"
                 [class.ficha-movible]="esFichaMovible(ficha)"
                 [class.ficha-mia]="ficha.JpId === jpId"
                 (click)="moverFicha(ficha)">
               </div>
             </div>
-
-            <!-- El trofeo en el centro -->
-            <div class="meta-trofeo" *ngIf="fila === 8 && columna === 8">🏆</div>
 
           </div>
         </ng-container>
@@ -74,10 +77,9 @@
       <!-- ── Indicador de turno ───────────────────────────────── -->
       <div class="turno-banner" [class.turno-mio]="esMiTurno">
 
-        <!-- Ficha del color de quien juega -->
         <div
           class="turno-color"
-          [ngClass]="'ficha-' + (getColorJugadorActual() || 'rojo').toLowerCase()">
+          [ngClass]="'ficha-' + getColorJugadorActual().toLowerCase()">
         </div>
 
         <div class="turno-texto">
@@ -96,7 +98,6 @@
       <!-- ── Zona del dado ────────────────────────────────────── -->
       <div class="dado-zona">
 
-        <!-- Botón del chat -->
         <div class="btn-accion" (click)="toggleChat()">
           <ion-icon name="chatbubble-outline"></ion-icon>
           <span class="badge-mensajes" *ngIf="mensajesNoLeidos > 0">
@@ -104,7 +105,6 @@
           </span>
         </div>
 
-        <!-- El dado -->
         <div class="dado-contenedor">
           <div
             class="dado"
@@ -112,27 +112,22 @@
             [class.dado-girando]="girandoDado"
             (click)="tirarDado()">
 
-            <!-- Cara con puntos según el valor -->
             <div class="dado-cara" *ngIf="!girandoDado && valorDado > 0">
-              <span class="punto" *ngFor="let p of getPuntos()"></span>
+              <span class="punto" *ngFor="let p of getPuntos(); trackBy: trackIndice"></span>
             </div>
 
-            <!-- Sin tirar todavía -->
             <div class="dado-cara dado-emoji" *ngIf="!girandoDado && valorDado === 0">
               🎲
             </div>
 
-            <!-- Girando -->
             <div class="dado-cara dado-emoji" *ngIf="girandoDado">🎲</div>
           </div>
 
-          <!-- Etiqueta del valor -->
           <div class="dado-valor" *ngIf="valorDado > 0 && !girandoDado">
             Sacaste {{ valorDado }}
           </div>
         </div>
 
-        <!-- Botón de abandonar -->
         <div class="btn-accion btn-salir" (click)="abandonarPartida()">
           <ion-icon name="exit-outline"></ion-icon>
         </div>
@@ -154,7 +149,6 @@
         <ion-icon name="close-outline" (click)="toggleChat()"></ion-icon>
       </div>
 
-      <!-- Mensajes -->
       <div class="chat-mensajes">
         <div
           class="mensaje"
@@ -171,7 +165,6 @@
         </div>
       </div>
 
-      <!-- Mensajes rápidos -->
       <div class="mensajes-rapidos">
         <div
           class="rapido-btn"
@@ -181,7 +174,6 @@
         </div>
       </div>
 
-      <!-- Input de texto libre -->
       <div class="chat-input-row">
         <input
           type="text"
