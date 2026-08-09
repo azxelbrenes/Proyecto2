@@ -1,13 +1,178 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>tablero</ion-title>
-  </ion-toolbar>
-</ion-header>
+<ion-content class="tablero-content" [fullscreen]="true">
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">tablero</ion-title>
-    </ion-toolbar>
-  </ion-header>
+  <!-- ── Loading inicial ────────────────────────────────────────── -->
+  <div class="loading-tablero" *ngIf="cargando">
+    <div class="dado-cargando">🎲</div>
+    <p>Cargando partida...</p>
+  </div>
+
+  <div class="tablero-container" *ngIf="!cargando">
+
+    <!-- ── Barra superior: jugadores ──────────────────────────── -->
+    <div class="jugadores-bar">
+      <div
+        class="jugador-chip"
+        *ngFor="let jugador of getJugadores()"
+        [ngClass]="'chip-' + jugador.Color.toLowerCase()"
+        [class.chip-turno]="esTurnoDe(jugador.JpId)"
+        [class.chip-desconectado]="jugador.Desconectado">
+
+        <div class="chip-avatar">{{ jugador.EsBot ? '🤖' : '🎮' }}</div>
+        <div class="chip-nombre">{{ jugador.Nombre }}</div>
+
+        <!-- Indicador de desconexión -->
+        <ion-icon name="wifi-outline" class="chip-wifi" *ngIf="jugador.Desconectado"></ion-icon>
+      </div>
+    </div>
+
+    <!-- ── Aviso flotante de eventos ──────────────────────────── -->
+    <div class="aviso-flotante" *ngIf="aviso">{{ aviso }}</div>
+
+    <!-- ================================================================ -->
+    <!-- EL TABLERO — grid de 15×15                                       -->
+    <!-- ================================================================ -->
+    <div class="tablero-wrapper">
+      <div class="tablero-grid">
+
+        <ng-container *ngFor="let fila of filas">
+          <div
+            *ngFor="let columna of columnas"
+            class="celda"
+            [ngClass]="[getTipoCelda(fila, columna), getZonaCasa(fila, columna)]">
+
+            <!-- Fichas que están en esta celda -->
+            <div class="fichas-celda">
+              <div
+                class="ficha"
+                *ngFor="let ficha of getFichasEnCelda(fila, columna)"
+                [ngClass]="'ficha-' + ficha.Color.toLowerCase()"
+                [class.ficha-movible]="esFichaMovible(ficha)"
+                [class.ficha-mia]="ficha.JpId === jpId"
+                (click)="moverFicha(ficha)">
+              </div>
+            </div>
+
+            <!-- El trofeo en el centro -->
+            <div class="meta-trofeo" *ngIf="fila === 8 && columna === 8">🏆</div>
+
+          </div>
+        </ng-container>
+
+      </div>
+    </div>
+
+    <!-- ── Panel inferior: turno y dado ───────────────────────── -->
+    <div class="panel-inferior">
+
+      <!-- Indicador de turno -->
+      <div class="turno-info" [class.turno-mio]="esMiTurno">
+        <span *ngIf="esMiTurno && !dadoTirado">¡Es tu turno! Tirá el dado</span>
+        <span *ngIf="esMiTurno && dadoTirado">Elegí una ficha para mover</span>
+        <span *ngIf="!esMiTurno">Turno de {{ getNombreJugadorActual() }}</span>
+      </div>
+
+      <!-- Zona del dado -->
+      <div class="dado-zona">
+
+        <!-- Botón del dado -->
+        <div
+          class="dado"
+          [class.dado-activo]="esMiTurno && !dadoTirado"
+          [class.dado-girando]="girandoDado"
+          (click)="tirarDado()">
+
+          <!-- Cara del dado según el valor -->
+          <div class="dado-cara" *ngIf="!girandoDado && valorDado > 0">
+            <span class="punto" *ngFor="let p of [].constructor(valorDado)"></span>
+          </div>
+
+          <!-- Sin tirar todavía -->
+          <div class="dado-cara dado-vacio" *ngIf="!girandoDado && valorDado === 0">
+            🎲
+          </div>
+
+          <!-- Girando -->
+          <div class="dado-cara" *ngIf="girandoDado">🎲</div>
+        </div>
+
+        <!-- Botones laterales -->
+        <div class="botones-laterales">
+
+          <!-- Chat -->
+          <div class="btn-accion" (click)="toggleChat()">
+            <ion-icon name="chatbubble-outline"></ion-icon>
+            <span class="badge-mensajes" *ngIf="mensajesNoLeidos > 0">
+              {{ mensajesNoLeidos }}
+            </span>
+          </div>
+
+          <!-- Abandonar -->
+          <div class="btn-accion btn-salir" (click)="abandonarPartida()">
+            <ion-icon name="exit-outline"></ion-icon>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- PANEL DE CHAT                                                    -->
+  <!-- ================================================================ -->
+  <div class="chat-overlay" *ngIf="mostrarChat" (click)="toggleChat()">
+    <div class="chat-panel" (click)="$event.stopPropagation()">
+
+      <div class="chat-header">
+        <span>Chat de la partida</span>
+        <ion-icon name="close-outline" (click)="toggleChat()"></ion-icon>
+      </div>
+
+      <!-- Mensajes -->
+      <div class="chat-mensajes">
+        <div
+          class="mensaje"
+          *ngFor="let msg of mensajes"
+          [class.mensaje-mio]="msg.JpId === jpId"
+          [ngClass]="'mensaje-' + (msg.Color || '').toLowerCase()">
+
+          <div class="mensaje-autor">{{ msg.NombreJugador }}</div>
+          <div class="mensaje-texto">{{ msg.Contenido }}</div>
+        </div>
+
+        <div class="chat-vacio" *ngIf="mensajes.length === 0">
+          Todavía no hay mensajes
+        </div>
+      </div>
+
+      <!-- Mensajes rápidos -->
+      <div class="mensajes-rapidos">
+        <div
+          class="rapido-btn"
+          *ngFor="let texto of mensajesRapidos"
+          (click)="enviarMensajeRapido(texto)">
+          {{ texto }}
+        </div>
+      </div>
+
+      <!-- Input de texto libre -->
+      <div class="chat-input-row">
+        <input
+          type="text"
+          class="chat-input"
+          placeholder="Escribí un mensaje..."
+          maxlength="200"
+          [(ngModel)]="mensajeTexto"
+          (keyup.enter)="enviarMensaje()">
+
+        <div class="btn-enviar" (click)="enviarMensaje()">
+          <ion-icon name="send-outline"></ion-icon>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
 </ion-content>
