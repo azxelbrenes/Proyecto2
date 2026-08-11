@@ -7,21 +7,24 @@ namespace Parchis_G3.Dominio.InterfacesLN;
 
 public interface IAbandonoLN
 {
-    // HU-19: el jugador abandona voluntariamente.
-    // Pierde 20% de la entrada, un bot lo reemplaza y se le
-    // cuenta el abandono para el bloqueo por reincidencia.
-    Respuesta<ResultadoAbandonoDTO> AbandonarPartida(int usuId, int parId, IUnidadTrabajoEF unidadTrabajo, IMapper mapper);
+    // RF-14: el jugador deja la partida. Pierde el 20% de la entrada,
+    // un bot lo reemplaza y queda registrado como derrota.
+    //
+    // esVoluntario distingue quién tocó "Abandonar" de quién perdió la
+    // conexión y se le vencieron los 60 segundos. Solo el primero suma
+    // abandono consecutivo para el bloqueo de 30 minutos.
+    Respuesta<ResultadoAbandonoDTO> AbandonarPartida(int usuId, int parId, IUnidadTrabajoEF unidadTrabajo, IMapper mapper, bool esVoluntario = true);
 
-    // HU-18: se detectó desconexión. Marca al jugador como
+    // RF-13: se detectó desconexión. Marca al jugador como
     // RECONECTANDO y arranca el temporizador de 60 segundos.
     Respuesta<bool> MarcarDesconectado(int parId, int jpId, IUnidadTrabajoEF unidadTrabajo);
 
-    // HU-18: el jugador volvió. Si fue dentro de los 60 segundos,
-    // retoma la partida normalmente.
+    // RF-13: el jugador volvió dentro de los 60 segundos y retoma
+    // la partida normalmente.
     Respuesta<bool> Reconectar(int parId, int jpId, IUnidadTrabajoEF unidadTrabajo);
 
-    // Revisa si a algún jugador desconectado ya se le vencieron
-    // los 60 segundos. Si es así, aplica el abandono automático.
+    // Revisa si a algún desconectado se le vencieron los 60 segundos.
+    // Si es así, lo reemplaza por un bot sin penalizarlo como abandono.
     Respuesta<List<int>> VerificarDesconexionesVencidas(int parId, IUnidadTrabajoEF unidadTrabajo, IMapper mapper);
 
     // Cuántos segundos le quedan a un jugador para reconectarse

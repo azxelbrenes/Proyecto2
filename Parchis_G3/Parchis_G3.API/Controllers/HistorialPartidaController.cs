@@ -138,22 +138,38 @@ public class HistorialPartidaController : ControllerBase
             if (!respuesta.blnIndicadorTransaccion)
                 return BadRequest(respuesta);
 
-            var lista = respuesta.ValorRetorno!.ToList();
+            var lista = respuesta.ValorRetorno!
+                .OrderByDescending(h => h.HpFecha)
+                .ToList();
+
             var jugadas = lista.Count;
             var ganadas = lista.Count(h => h.HpResultado == "VICTORIA");
-            var perdidas = lista.Count(h => h.HpResultado == "DERROTA");
-            var abandono = lista.Count(h => h.HpResultado == "ABANDONO");
+            var abandonos = lista.Count(h => h.HpResultado == "ABANDONO");
+
+            // Un abandono cuenta como derrota (RF-14). Se suma en vez
+            // de contar solo "DERROTA": si no, las partidas abandonadas
+            // no aparecían ni en ganadas ni en perdidas y los números
+            // no cerraban con el total de jugadas.
+            var perdidas = lista.Count(h => h.HpResultado == "DERROTA") + abandonos;
+
+            // Sin partidas jugadas el porcentaje es 0, no una división
+            // por cero (RF-10).
             var porcentaje = jugadas > 0
                 ? Math.Round((double)ganadas / jugadas * 100, 2)
                 : 0;
+
+            var monedasGanadas = lista.Where(h => h.HpMonedasGanadas > 0).Sum(h => h.HpMonedasGanadas);
+            var monedasPerdidas = lista.Where(h => h.HpMonedasGanadas < 0).Sum(h => -h.HpMonedasGanadas);
 
             return Ok(new
             {
                 jugadas,
                 ganadas,
                 perdidas,
-                abandono,
+                abandonos,
                 porcentajeVictoria = porcentaje,
+                monedasGanadas,
+                monedasPerdidas,
                 historial = lista
             });
         }

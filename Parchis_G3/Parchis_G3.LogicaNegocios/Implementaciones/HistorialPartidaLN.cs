@@ -64,14 +64,22 @@ public class HistorialPartidaLN : IHistorialPartidaLN
         }
     }
 
-    // Obtiene registros filtrados según los campos del objeto recibido
+    // Obtiene registros filtrados según los campos del objeto recibido.
+    //
+    // El filtro por UsuId es lo importante acá: antes solo se filtraba
+    // por HpId, y como el controlador de estadísticas llama con HpId en
+    // 0 y UsuId cargado, la condición "HpId <= 0" daba true para todas
+    // las filas y devolvía el historial de TODOS los usuarios. Además
+    // de romper las estadísticas, cualquiera veía las partidas ajenas.
     public Respuesta<IEnumerable<THistorialPartida>> Obtener(THistorialPartida entidad)
     {
         try
         {
-            // Filtramos por ID si viene especificado (mayor que 0)
             var respuesta = _unidadTrabajo.THistorialPartida.Buscar(
-                x => entidad.HpId <= 0 || x.HpId == entidad.HpId
+                x => (entidad.HpId <= 0 || x.HpId == entidad.HpId)
+                  && (entidad.UsuId <= 0 || x.UsuId == entidad.UsuId)
+                  && (entidad.ParId <= 0 || x.ParId == entidad.ParId)
+                  && (entidad.SalId <= 0 || x.SalId == entidad.SalId)
             );
 
             if (!respuesta.blnIndicadorTransaccion)

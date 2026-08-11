@@ -24,7 +24,12 @@ public class AbandonoLN : IAbandonoLN
     // ================================================================
     // ABANDONAR PARTIDA (HU-19)
     // ================================================================
-    public Respuesta<ResultadoAbandonoDTO> AbandonarPartida(int usuId, int parId, IUnidadTrabajoEF unidadTrabajo, IMapper mapper)
+    // esVoluntario distingue al jugador que toca "Abandonar" del que
+    // simplemente perdió internet y se le vencieron los 60 segundos.
+    // Solo el primero suma abandono consecutivo: si no, tres cortes de
+    // conexión bloqueaban la cuenta 30 minutos sin que el jugador
+    // hubiera hecho nada.
+    public Respuesta<ResultadoAbandonoDTO> AbandonarPartida(int usuId, int parId, IUnidadTrabajoEF unidadTrabajo, IMapper mapper, bool esVoluntario = true)
     {
         try
         {
@@ -59,13 +64,14 @@ public class AbandonoLN : IAbandonoLN
 
             usuario.UsuMonedasTotal -= penalizacion;
 
-            // ── Contar abandonos consecutivos ────────────────────
-            usuario.UsuAbandonosConsecutivos += 1;
-
+            // ── Contar abandonos consecutivos (RF-14) ────────────
             bool bloqueado = false;
             DateTime? fechaDesbloqueo = null;
 
-            if (usuario.UsuAbandonosConsecutivos >= ABANDONOS_PARA_BLOQUEO)
+            if (esVoluntario)
+                usuario.UsuAbandonosConsecutivos += 1;
+
+            if (esVoluntario && usuario.UsuAbandonosConsecutivos >= ABANDONOS_PARA_BLOQUEO)
             {
                 usuario.UsuBloqueado = true;
                 fechaDesbloqueo = DateTime.Now.AddMinutes(MINUTOS_BLOQUEO);
@@ -97,7 +103,7 @@ public class AbandonoLN : IAbandonoLN
                 UsuId = usuId,
                 ParId = parId,
                 SalId = sala.SalId,
-                HpResultado = "ABANDONO",
+                HpResultado = esVoluntario ? "ABANDONO" : "DERROTA",
                 HpMonedasGanadas = -penalizacion,
                 HpFecha = DateTime.Now
             });
@@ -232,7 +238,8 @@ public class AbandonoLN : IAbandonoLN
                 // Se le venció — aplicamos abandono automático
                 if (jugador.UsuId.HasValue)
                 {
-                    AbandonarPartida(jugador.UsuId.Value, parId, unidadTrabajo, mapper);
+                    // false: se le cayó la conexión, no abandonó a propósito
+                    AbandonarPartida(jugador.UsuId.Value, parId, unidadTrabajo, mapper, false);
                 }
                 else
                 {
