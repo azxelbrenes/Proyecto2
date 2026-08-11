@@ -53,6 +53,8 @@ builder.Services.AddScoped<ISesionesActivaLN, SesionesActivaLN>();
 builder.Services.AddScoped<IInventarioLN, InventarioLN>();
 builder.Services.AddScoped<IRankingLN, RankingLN>();
 builder.Services.AddScoped<IRecompensaLN, RecompensaLN>();
+// RF-03: reloj de 30 segundos por turno y bucle de turnos de bots
+builder.Services.AddSingleton<TemporizadorTurnoService>();
 
 // -- Seguridad (Scoped) --
 // NO es Singleton porque no guarda estado en memoria: los intentos

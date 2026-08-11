@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Parchis_G3.API.Services;
-
 using Parchis_G3.Dominio.EntidadesTipadas;
 using Parchis_G3.Dominio.InterfacesLN;
 
@@ -25,9 +24,25 @@ public class SalaController : ControllerBase
         _logger = logger;
     }
 
+    // ================================================================
+    // DTO de entrada
+    // ================================================================
+    // Va acá adentro para no tener que crear archivos nuevos ni tocar
+    // otros proyectos. Cuando haya tiempo conviene moverlo a
+    // Dominio/DTO/, pero funciona igual.
+    //
+    // El motivo de existir: el endpoint recibía [FromBody] TSala, y
+    // TSala tiene SalNombre y SalEstado como string no-nullable. Con
+    // nullable reference types activado, ASP.NET los exige en el body
+    // y devuelve 400 antes de entrar al método. El cliente solo manda
+    // { "salId": 1 }, así que la validación fallaba siempre.
+    public class UnirseSalaRequest
+    {
+        public int SalId { get; set; }
+    }
+
     // ── GET /api/sala ────────────────────────────────────────────
     // Lista todas las salas activas.
-    // Android usa esto para mostrar las 5 opciones al jugador.
     [HttpGet]
     public IActionResult Listar()
     {
@@ -48,7 +63,6 @@ public class SalaController : ControllerBase
     }
 
     // ── GET /api/sala/{id} ───────────────────────────────────────
-    // Obtiene los detalles de una sala específica por su ID.
     [HttpGet("{id}")]
     public IActionResult Buscar(int id)
     {
@@ -69,49 +83,66 @@ public class SalaController : ControllerBase
     }
 
     // ── POST /api/sala/unirse ────────────────────────────────────
-    // El jugador intenta unirse a una sala.
-    // Aquí validamos que tenga monedas suficientes para la entrada.
-    // IMPORTANTE: el servidor siempre verifica el precio real en BD —
-    // nunca confiamos en el precio que mande el cliente.
+    // Cobra la entrada de la sala al jugador.
+    //
+    // El servidor SIEMPRE lee el costo real desde la BD. Nunca se
+    // confía en un precio que venga del cliente.
     [HttpPost("unirse")]
-    public IActionResult Unirse([FromBody] TSala sala)
+    public IActionResult Unirse([FromBody] UnirseSalaRequest datos)
     {
         try
         {
-            // Obtenemos el ID del jugador desde el token
+            if (datos == null || datos.SalId <= 0)
+                return BadRequest(new { mensaje = "Debés indicar una sala válida." });
+
+            // El usuario sale del token, nunca del body: si viniera del
+            // body, cualquiera podría gastarle las monedas a otro.
             var usuId = _jwtService.ObtenerUsuIdDesdeToken(User);
             if (usuId <= 0)
-                return Unauthorized("Token inválido.");
+                return Unauthorized(new { mensaje = "Token inválido." });
 
-            // Buscamos la sala en BD para obtener el precio REAL
-            // Nunca usamos el precio que manda el cliente — podrían manipularlo
-            var salaReal = _salaLN.Buscar(new TSala { SalId = sala.SalId });
+            var salaReal = _salaLN.Buscar(new TSala { SalId = datos.SalId });
             if (!salaReal.blnIndicadorTransaccion)
-                return NotFound("Sala no encontrada.");
+                return NotFound(new { mensaje = "Sala no encontrada." });
 
-            // Verificamos el saldo actual del jugador
-            var usuario = _usuarioLN.Buscar(new TUsuario { UsuId = usuId });
-            if (!usuario.blnIndicadorTransaccion)
-                return NotFound("Usuario no encontrado.");
+            var sala = salaReal.ValorRetorno!;
 
-            // Comparamos monedas disponibles vs costo de entrada
-            if (usuario.ValorRetorno!.UsuMonedasTotal < salaReal.ValorRetorno!.SalCostoEntrada)
+            var usuarioResp = _usuarioLN.Buscar(new TUsuario { UsuId = usuId });
+            if (!usuarioResp.blnIndicadorTransaccion)
+                return NotFound(new { mensaje = "Usuario no encontrado." });
+
+            var usuario = usuarioResp.ValorRetorno!;
+
+            // RF-14: bloqueo temporal por abandonar 3 partidas seguidas
+            if (usuario.UsuBloqueado)
                 return BadRequest(new
                 {
-                    mensaje = "Saldo insuficiente para unirse a esta sala.",
-                    saldoActual = usuario.ValorRetorno.UsuMonedasTotal,
-                    costoEntrada = salaReal.ValorRetorno.SalCostoEntrada
+                    mensaje = "Tu cuenta está bloqueada temporalmente por abandonar partidas."
                 });
 
-            // Descontamos las monedas del jugador
-            usuario.ValorRetorno.UsuMonedasTotal -= salaReal.ValorRetorno.SalCostoEntrada;
-            _usuarioLN.Modificar(usuario.ValorRetorno);
+            // RF-02: verificar saldo suficiente
+            if (usuario.UsuMonedasTotal < sala.SalCostoEntrada)
+                return BadRequest(new
+                {
+                    mensaje = $"Saldo insuficiente. Necesitás {sala.SalCostoEntrada} monedas y tenés {usuario.UsuMonedasTotal}.",
+                    saldoActual = usuario.UsuMonedasTotal,
+                    costoEntrada = sala.SalCostoEntrada
+                });
+
+            // Descontamos la entrada
+            usuario.UsuMonedasTotal -= sala.SalCostoEntrada;
+
+            var modificar = _usuarioLN.Modificar(usuario);
+            if (!modificar.blnIndicadorTransaccion)
+                return BadRequest(new { mensaje = "No se pudo descontar la entrada." });
 
             return Ok(new
             {
-                mensaje = $"Te uniste a {salaReal.ValorRetorno.SalNombre} exitosamente.",
-                salaId = salaReal.ValorRetorno.SalId,
-                monedas = usuario.ValorRetorno.UsuMonedasTotal
+                mensaje = $"Te uniste a {sala.SalNombre}.",
+                salaId = sala.SalId,
+                salaNombre = sala.SalNombre,
+                costoEntrada = sala.SalCostoEntrada,
+                monedas = usuario.UsuMonedasTotal
             });
         }
         catch (Exception ex)

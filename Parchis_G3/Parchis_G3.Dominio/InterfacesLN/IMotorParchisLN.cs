@@ -23,4 +23,22 @@ public interface IMotorParchisLN
     // Devuelve el estado completo actual del tablero — se usa quien
     // se reconecta o entra a ver la partida por primera vez.
     Respuesta<EstadoPartidaDTO> ObtenerEstado(int parId, IUnidadTrabajoEF unidadTrabajo, IMapper mapper);
+
+    // ================================================================
+    // RF-03 — TIEMPO LÍMITE DE 30 SEGUNDOS POR TURNO
+    // ================================================================
+
+    // Segundos que le quedan al jugador que tiene el turno.
+    // El Hub lo usa para mostrar la cuenta regresiva y para saber
+    // cuándo disparar el movimiento automático.
+    int SegundosRestantesTurno(int parId);
+
+    // True cuando ya se agotaron los 30 segundos del turno actual.
+    bool TurnoVencido(int parId);
+
+    // Resuelve el turno por el jugador cuando se le acabó el tiempo.
+    // Cubre los dos casos: que no haya llegado a tirar el dado, y
+    // que haya tirado pero no eligiera ficha. La jugada se elige al
+    // azar entre las legales, como pide RF-03.
+    Respuesta<ResultadoTurnoDTO> EjecutarMovimientoAutomatico(int parId, int jpId, IUnidadTrabajoEF unidadTrabajo, IMapper mapper);
 }

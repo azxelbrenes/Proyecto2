@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Microsoft.Extensions.Logging;
+using Parchis_G3.Dominio.DTO;
 using Parchis_G3.Dominio.Entidades;
 using Parchis_G3.Dominio.EntidadesTipadas;
 using Parchis_G3.Dominio.InterfacesAD;
@@ -83,6 +84,98 @@ public class SalaLN : ISalaLN
             return Respuesta<IEnumerable<TSala>>.Error(ex.Message);
         }
     }
+
+    // ================================================================
+    // UNIRSE A UNA SALA (RF-02, RF-05, RF-14)
+    // ================================================================
+    // Esta lógica estaba en SalaController: verificar saldo, descontar
+    // monedas y responder. Son reglas de negocio y su lugar es acá.
+    //
+    // En el controlador tenía dos problemas serios:
+    //   1. El descuento se guardaba sin registrar la transacción, y
+    //      RF-05 exige que TODA transacción quede en el historial.
+    //   2. Cobraba la entrada sin verificar el bloqueo por abandonos.
+    //
+    // El método NO mete al jugador en una partida: eso es trabajo del
+    // matchmaking. Devuelve el cobro hecho para que el flujo continúe.
+    public Respuesta<UnionSalaResultadoDTO> UnirseASala(int usuId, int salId)
+    {
+        try
+        {
+            if (usuId <= 0)
+                return Respuesta<UnionSalaResultadoDTO>.Validacion("Usuario inválido.");
+
+            if (salId <= 0)
+                return Respuesta<UnionSalaResultadoDTO>.Validacion("Sala inválida.");
+
+            // ── Precio real, siempre leído de la BD ──────────────
+            // Nunca confiamos en un costo que venga del cliente.
+            var salaResp = _unidadTrabajo.TSala.ObtenerEntidad(s => s.SalId == salId);
+            if (!salaResp.blnIndicadorTransaccion)
+                return Respuesta<UnionSalaResultadoDTO>.Validacion("La sala no existe.");
+
+            var sala = salaResp.ValorRetorno!;
+
+            if (sala.SalEstado != "A")
+                return Respuesta<UnionSalaResultadoDTO>.Validacion("Esta sala no está disponible.");
+
+            // ── Usuario ──────────────────────────────────────────
+            var usuarioResp = _unidadTrabajo.TUsuario.ObtenerEntidad(u => u.UsuId == usuId);
+            if (!usuarioResp.blnIndicadorTransaccion)
+                return Respuesta<UnionSalaResultadoDTO>.Validacion("El usuario no existe.");
+
+            var usuario = usuarioResp.ValorRetorno!;
+
+            // ── RF-14: bloqueo por 3 abandonos consecutivos ──────
+            // ── RF-14: bloqueo por 3 abandonos consecutivos ──────
+            if (usuario.UsuBloqueado)
+            {
+                return Respuesta<UnionSalaResultadoDTO>.Validacion(
+                    "Tu cuenta está bloqueada temporalmente. Intentá más tarde.");
+            }
+            // ── RF-02: monedas suficientes ───────────────────────
+            if (usuario.UsuMonedasTotal < sala.SalCostoEntrada)
+                return Respuesta<UnionSalaResultadoDTO>.Validacion(
+                    $"Saldo insuficiente. Necesitás {sala.SalCostoEntrada} monedas y tenés {usuario.UsuMonedasTotal}.");
+
+            // ── Descuento y registro en una sola transacción ─────
+            usuario.UsuMonedasTotal -= sala.SalCostoEntrada;
+            _unidadTrabajo.TUsuario.Modificar(usuario);
+
+            _unidadTrabajo.TTransaccion.Insertar(new Transaccione
+            {
+                UsuId = usuario.UsuId,
+                TranTipo = "ENTRADA_SALA",
+                TranConcepto = $"Entrada a {sala.SalNombre}",
+                TranMonto = -sala.SalCostoEntrada,
+                TranSaldoResultante = usuario.UsuMonedasTotal,
+                TranFecha = DateTime.Now
+            });
+
+            // Un solo Completar: o se guardan las dos cosas o ninguna.
+            _unidadTrabajo.Completar();
+
+            var resultado = new UnionSalaResultadoDTO
+            {
+                SalId = sala.SalId,
+                SalNombre = sala.SalNombre,
+                CostoEntrada = sala.SalCostoEntrada,
+                MonedasRestantes = usuario.UsuMonedasTotal
+            };
+
+            return Respuesta<UnionSalaResultadoDTO>.Exito(
+                resultado, $"Te uniste a {sala.SalNombre}.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error en SalaLN.UnirseASala");
+            return Respuesta<UnionSalaResultadoDTO>.Error(ex.Message);
+        }
+    }
+
+    // ================================================================
+    // ADMINISTRACIÓN DE SALAS
+    // ================================================================
 
     public Respuesta<TSala> Insertar(TSala Sala)
     {

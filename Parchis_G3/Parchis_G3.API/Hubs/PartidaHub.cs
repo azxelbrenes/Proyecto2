@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using Microsoft.AspNetCore.SignalR;
+using Parchis_G3.API.Services;
 using Parchis_G3.Dominio.InterfacesAD;
 using Parchis_G3.Dominio.InterfacesLN;
 using AutoMapper;
@@ -9,14 +10,15 @@ namespace Parchis_G3.API.Hubs;
 public class PartidaHub : Hub
 {
     private readonly IMotorParchisLN _motor;
-    private readonly IBotServiceLN _botService;
     private readonly IChatLN _chatLN;
     private readonly IAbandonoLN _abandonoLN;
     private readonly IUnidadTrabajoEF _unidadTrabajo;
     private readonly IMapper _mapper;
 
-    // Delay entre jugadas de bots para que se vea natural
-    private const int DELAY_BOT_MS = 1500;
+    // RF-03: el reloj de 30 segundos y los turnos de bots viven acá.
+    // El bucle de bots estaba duplicado dentro del Hub; ahora hay una
+    // sola implementación que usan tanto el Hub como el temporizador.
+    private readonly TemporizadorTurnoService _temporizador;
 
     // ConnectionId -> (parId, jpId)
     // Estático porque el Hub se instancia de nuevo en cada llamada
@@ -24,18 +26,18 @@ public class PartidaHub : Hub
 
     public PartidaHub(
         IMotorParchisLN motor,
-        IBotServiceLN botService,
         IChatLN chatLN,
         IAbandonoLN abandonoLN,
         IUnidadTrabajoEF unidadTrabajo,
-        IMapper mapper)
+        IMapper mapper,
+        TemporizadorTurnoService temporizador)
     {
         _motor = motor;
-        _botService = botService;
         _chatLN = chatLN;
         _abandonoLN = abandonoLN;
         _unidadTrabajo = unidadTrabajo;
         _mapper = mapper;
+        _temporizador = temporizador;
     }
 
     private static string GrupoPartida(int parId) => $"partida-{parId}";
@@ -47,29 +49,34 @@ public class PartidaHub : Hub
     {
         await Groups.AddToGroupAsync(Context.ConnectionId, GrupoPartida(parId));
 
-        // Registramos esta conexión para saber quién es al desconectarse
         _conexiones[Context.ConnectionId] = (parId, jpId);
 
-        // Si venía de una desconexión, lo reconectamos (HU-18)
+        // Si venía de una desconexión, lo reconectamos (RF-13)
         var reconexion = _abandonoLN.Reconectar(parId, jpId, _unidadTrabajo);
 
         if (reconexion.blnIndicadorTransaccion && reconexion.ValorRetorno)
         {
-            // Avisamos a los demás que el jugador volvió
             await Clients.OthersInGroup(GrupoPartida(parId))
                 .SendAsync("JugadorReconectado", new { jpId });
         }
 
-        // Le mandamos el estado actual del tablero
         var estado = _motor.ObtenerEstado(parId, _unidadTrabajo, _mapper);
         await Clients.Caller.SendAsync("EstadoActualizado", estado.ValorRetorno);
 
-        // Y el historial del chat
         var historial = _chatLN.ObtenerHistorial(parId, _unidadTrabajo);
         await Clients.Caller.SendAsync("HistorialChat", historial.ValorRetorno);
 
-        // Por si al conectarse ya era turno de un bot
-        await ProcesarTurnosDeBots(parId);
+        // Le decimos cuántos segundos le quedan al turno en curso, para
+        // que quien se reconecta vea la cuenta regresiva correcta y no
+        // arranque de 30 otra vez.
+        await Clients.Caller.SendAsync("TurnoIniciado", new
+        {
+            JpId = estado.ValorRetorno?.TurnoActualJpId ?? 0,
+            Segundos = _motor.SegundosRestantesTurno(parId)
+        });
+
+        await _temporizador.ProcesarTurnosDeBots(parId);
+        _temporizador.IniciarTurno(parId);
     }
 
     // ================================================================
@@ -86,21 +93,31 @@ public class PartidaHub : Hub
     // ================================================================
     public async Task TirarDado(int parId, int jpId)
     {
+        // El jugador actuó: paramos el reloj antes de nada
+        _temporizador.Detener(parId);
+
         var resultado = _motor.TirarDado(parId, jpId, _unidadTrabajo, _mapper);
 
         if (!resultado.blnIndicadorTransaccion)
         {
             await Clients.Caller.SendAsync("Error", resultado.strMensajeRespuesta);
+
+            // Si la tirada falló, el turno sigue siendo suyo: le
+            // devolvemos el reloj para no dejarlo sin límite
+            _temporizador.IniciarTurno(parId);
             return;
         }
 
         await Clients.Group(GrupoPartida(parId)).SendAsync("DadoTirado", resultado.ValorRetorno);
 
-        // Si el motor cedió el turno (sin movimientos), puede tocar a un bot
+        // Si el motor cedió el turno (sin movimientos posibles o tercer 6),
+        // puede tocarle a un bot
         if (resultado.ValorRetorno!.SiguienteTurnoJpId != jpId)
         {
-            await ProcesarTurnosDeBots(parId);
+            await _temporizador.ProcesarTurnosDeBots(parId);
         }
+
+        _temporizador.IniciarTurno(parId);
     }
 
     // ================================================================
@@ -108,11 +125,14 @@ public class PartidaHub : Hub
     // ================================================================
     public async Task MoverFicha(int parId, int jpId, int numeroFicha, int valorDado)
     {
+        _temporizador.Detener(parId);
+
         var resultado = _motor.MoverFicha(parId, jpId, numeroFicha, valorDado, _unidadTrabajo, _mapper);
 
         if (!resultado.blnIndicadorTransaccion)
         {
             await Clients.Caller.SendAsync("Error", resultado.strMensajeRespuesta);
+            _temporizador.IniciarTurno(parId);
             return;
         }
 
@@ -121,38 +141,34 @@ public class PartidaHub : Hub
         if (resultado.ValorRetorno!.PartidaFinalizada)
         {
             await Clients.Group(GrupoPartida(parId)).SendAsync("PartidaFinalizada", resultado.ValorRetorno);
+            _temporizador.Limpiar(parId);
             return;
         }
 
-        await ProcesarTurnosDeBots(parId);
+        await _temporizador.ProcesarTurnosDeBots(parId);
+        _temporizador.IniciarTurno(parId);
     }
 
     // ================================================================
-    // ENVIAR MENSAJE DE CHAT (HU-14)
+    // ENVIAR MENSAJE DE CHAT (RF-09)
     // ================================================================
-    // Valida el cooldown de 5 segundos, guarda en BD y retransmite
-    // el mensaje a los 4 jugadores de la partida.
     public async Task EnviarMensaje(int parId, int jpId, string contenido, bool esPredefinido)
     {
         var resultado = _chatLN.EnviarMensaje(parId, jpId, contenido, esPredefinido, _unidadTrabajo);
 
         if (!resultado.blnIndicadorTransaccion)
         {
-            // El error (cooldown, mensaje vacío) solo lo ve quien lo mandó
             await Clients.Caller.SendAsync("Error", resultado.strMensajeRespuesta);
             return;
         }
 
-        // El mensaje sí lo ven todos
         await Clients.Group(GrupoPartida(parId))
             .SendAsync("MensajeRecibido", resultado.ValorRetorno);
     }
 
     // ================================================================
-    // ABANDONAR PARTIDA (HU-19)
+    // ABANDONAR PARTIDA (RF-14)
     // ================================================================
-    // El jugador se rinde. Pierde 20% de la entrada, se convierte
-    // en bot y la partida continúa para los demás.
     public async Task AbandonarPartida(int parId, int usuId)
     {
         var resultado = _abandonoLN.AbandonarPartida(usuId, parId, _unidadTrabajo, _mapper);
@@ -163,46 +179,38 @@ public class PartidaHub : Hub
             return;
         }
 
-        // A quien abandonó le mandamos el detalle de su penalización
         await Clients.Caller.SendAsync("AbandonoConfirmado", resultado.ValorRetorno);
 
-        // A los demás les avisamos que ahora ese puesto lo juega un bot
         await Clients.OthersInGroup(GrupoPartida(parId)).SendAsync("JugadorAbandono", new
         {
             jpId = resultado.ValorRetorno!.JpId,
             mensaje = "Un jugador abandonó. Un bot tomó su lugar."
         });
 
-        // Sacamos su conexión del grupo
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, GrupoPartida(parId));
         _conexiones.TryRemove(Context.ConnectionId, out _);
 
-        // Mandamos el estado actualizado a los que quedan
         var estado = _motor.ObtenerEstado(parId, _unidadTrabajo, _mapper);
         await Clients.Group(GrupoPartida(parId)).SendAsync("EstadoActualizado", estado.ValorRetorno);
 
-        // Si ahora le toca al bot que lo reemplazó, que juegue
-        await ProcesarTurnosDeBots(parId);
+        // El puesto ahora lo juega un bot: puede tocarle de inmediato
+        await _temporizador.ProcesarTurnosDeBots(parId);
+        _temporizador.IniciarTurno(parId);
     }
 
     // ================================================================
-    // DESCONEXIÓN AUTOMÁTICA (HU-18)
+    // DESCONEXIÓN AUTOMÁTICA (RF-13)
     // ================================================================
-    // Se dispara solo cuando alguien pierde internet, cierra la app
-    // o se le apaga el celular.
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        // ¿Sabemos qué jugador era esta conexión?
         if (_conexiones.TryRemove(Context.ConnectionId, out var datos))
         {
             var (parId, jpId) = datos;
 
-            // Lo marcamos como RECONECTANDO y arrancamos los 60 seg
             var resultado = _abandonoLN.MarcarDesconectado(parId, jpId, _unidadTrabajo);
 
             if (resultado.blnIndicadorTransaccion && resultado.ValorRetorno)
             {
-                // Avisamos a los demás para que vean el indicador
                 await Clients.Group(GrupoPartida(parId)).SendAsync("JugadorDesconectado", new
                 {
                     jpId,
@@ -215,10 +223,8 @@ public class PartidaHub : Hub
     }
 
     // ================================================================
-    // VERIFICAR RECONEXIONES VENCIDAS (HU-18)
+    // VERIFICAR RECONEXIONES VENCIDAS (RF-13)
     // ================================================================
-    // El frontend llama a esto periódicamente. A quienes se les
-    // vencieron los 60 segundos, se les aplica abandono automático.
     public async Task VerificarReconexiones(int parId)
     {
         var resultado = _abandonoLN.VerificarDesconexionesVencidas(parId, _unidadTrabajo, _mapper);
@@ -234,42 +240,8 @@ public class PartidaHub : Hub
             var estado = _motor.ObtenerEstado(parId, _unidadTrabajo, _mapper);
             await Clients.Group(GrupoPartida(parId)).SendAsync("EstadoActualizado", estado.ValorRetorno);
 
-            await ProcesarTurnosDeBots(parId);
-        }
-    }
-
-    // ================================================================
-    // PROCESAR TURNOS DE BOTS
-    // ================================================================
-    private async Task ProcesarTurnosDeBots(int parId)
-    {
-        int iteraciones = 0;
-
-        while (iteraciones < 20)
-        {
-            iteraciones++;
-
-            if (!_botService.EsTurnoDeBot(parId, _unidadTrabajo, out int jpIdBot))
-                break;
-
-            await Task.Delay(DELAY_BOT_MS);
-
-            var resultado = _botService.JugarTurnoBot(parId, jpIdBot, _unidadTrabajo, _mapper);
-
-            if (!resultado.blnIndicadorTransaccion)
-            {
-                await Clients.Group(GrupoPartida(parId))
-                    .SendAsync("Error", $"Error en turno del bot: {resultado.strMensajeRespuesta}");
-                break;
-            }
-
-            await Clients.Group(GrupoPartida(parId)).SendAsync("FichaMovida", resultado.ValorRetorno);
-
-            if (resultado.ValorRetorno!.PartidaFinalizada)
-            {
-                await Clients.Group(GrupoPartida(parId)).SendAsync("PartidaFinalizada", resultado.ValorRetorno);
-                break;
-            }
+            await _temporizador.ProcesarTurnosDeBots(parId);
+            _temporizador.IniciarTurno(parId);
         }
     }
 }

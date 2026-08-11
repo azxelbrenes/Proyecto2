@@ -10,33 +10,55 @@ namespace Parchis_G3.LogicaNegocios.Motor;
 
 public class MotorParchisLN : IMotorParchisLN
 {
-    // ── Constantes del tablero ───────────────────────────────────
-    private const int ANILLO_LONGITUD = 64;  // Casillas del anillo compartido
-    private const int CASILLAS_POR_COLOR = 16; // 64 / 4 jugadores
-    private const int META = 69; // Valor que representa "coronada"
+    // ================================================================
+    // GEOMETRÍA DEL TABLERO
+    // ================================================================
+    // Estos valores DEBEN coincidir con tablero.config.ts del frontend.
+    // La relación es: anillo = 4 × (2L + 1) y grid = 2L + 3.
+    // Con un grid de 15×15 → L = 6 → 52 casillas.
+    private const int ANILLO_LONGITUD = 52;
+    private const int OFFSET_ENTRE_COLORES = 13;   // 52 / 4
 
-    // Offset de salida de cada color dentro del anillo (0-63)
+    private const int POS_CASA = 0;
+    private const int POS_ANILLO_MIN = 1;
+    private const int POS_ANILLO_MAX = 51;
+    private const int POS_RECTA_MIN = 52;
+    private const int POS_RECTA_MAX = 56;
+    private const int META = 57;   // ficha coronada
+
+    // ── Reglas de turno (RF-03) ──────────────────────────────────
+    private const int DADO_TURNO_EXTRA = 6;
+    private const int MAX_TURNOS_CONSECUTIVOS = 3;
+    public const int SEGUNDOS_LIMITE_TURNO = 30;
+
+    // El recorrido arranca en la salida del AZUL, igual que el frontend
     private static readonly Dictionary<string, int> OffsetColor = new()
     {
-        { "ROJO",     0 },
-        { "AZUL",    16 },
-        { "VERDE",   32 },
-        { "AMARILLO",48 }
+        { "AZUL",     0  },
+        { "VERDE",    13 },
+        { "AMARILLO", 26 },
+        { "ROJO",     39 }
     };
 
-    // Las casillas seguras son las 4 casillas de salida
-    private static readonly HashSet<int> CasillasSeguras = new(OffsetColor.Values);
+    // Casillas de salida (seguras) más las 4 estrellas intermedias.
+    // Coinciden con CASILLAS_SALIDA y CASILLAS_ESTRELLA del frontend.
+    private static readonly HashSet<int> CasillasSeguras = new()
+    {
+        0, 13, 26, 39,     // salidas
+        8, 21, 34, 47      // estrellas
+    };
 
-    // ── Estado en memoria (esto es lo que justifica el Singleton) ──
-    // parId -> jpId de quien tiene el turno actual
+    // ── Estado en memoria (esto justifica el Singleton) ───────────
     private readonly ConcurrentDictionary<int, int> _turnoActual = new();
 
-    // jpId -> cuántos 5's consecutivos lleva ese jugador
-    private readonly ConcurrentDictionary<int, int> _rachaCincos = new();
+    // jpId -> cuántos 6's consecutivos lleva
+    private readonly ConcurrentDictionary<int, int> _rachaSeises = new();
 
-    // jpId -> valor de dado ya tirado, esperando a que el jugador
-    // elija qué ficha mover (evita que el cliente invente su propio valor)
+    // jpId -> dado ya tirado esperando que el jugador elija ficha
     private readonly ConcurrentDictionary<int, int> _dadoPendiente = new();
+
+    // parId -> momento en que empezó el turno actual (RF-03)
+    private readonly ConcurrentDictionary<int, DateTime> _inicioTurno = new();
 
     private static readonly Random _random = Random.Shared;
 
@@ -47,14 +69,12 @@ public class MotorParchisLN : IMotorParchisLN
     {
         try
         {
-            // Traemos los 4 jugadores de esta partida (humanos o bots)
             var jugadoresResp = unidadTrabajo.TJugadoresPartida.Buscar(j => j.ParId == parId);
             if (!jugadoresResp.blnIndicadorTransaccion || !jugadoresResp.ValorRetorno!.Any())
                 return Respuesta<bool>.Validacion("La partida no tiene jugadores asignados.");
 
             var jugadores = jugadoresResp.ValorRetorno!.OrderBy(j => j.JpPosicion).ToList();
 
-            // Creamos las 4 fichas de cada jugador, todas empezando en casa
             foreach (var jugador in jugadores)
             {
                 for (int numeroFicha = 1; numeroFicha <= 4; numeroFicha++)
@@ -64,14 +84,13 @@ public class MotorParchisLN : IMotorParchisLN
                         ParId = parId,
                         JpId = jugador.JpId,
                         EfNumeroFicha = numeroFicha,
-                        EfPosicion = 0,
+                        EfPosicion = POS_CASA,
                         EfEstadoFicha = "EN_CASA",
                         EfUltimaActualizacion = DateTime.Now
                     });
                 }
             }
 
-            // Marcamos la partida como iniciada
             var partidaResp = unidadTrabajo.TPartida.ObtenerEntidad(p => p.ParId == parId);
             if (partidaResp.blnIndicadorTransaccion)
             {
@@ -83,8 +102,8 @@ public class MotorParchisLN : IMotorParchisLN
 
             unidadTrabajo.Completar();
 
-            // El primer turno es del jugador en la posición 1
             _turnoActual[parId] = jugadores.First().JpId;
+            _inicioTurno[parId] = DateTime.Now;
 
             return Respuesta<bool>.Exito(true, "Partida iniciada correctamente.");
         }
@@ -101,74 +120,18 @@ public class MotorParchisLN : IMotorParchisLN
     {
         try
         {
-            // Validamos que sea el turno de este jugador
-            if (!_turnoActual.TryGetValue(parId, out int jpIdTurno) || jpIdTurno != jpId)
+            int jpIdTurno = ObtenerJpIdTurno(parId, unidadTrabajo);
+
+            if (jpIdTurno != jpId)
                 return Respuesta<ResultadoTurnoDTO>.Validacion("No es tu turno.");
 
-            // Tiramos el dado — número aleatorio entre 1 y 6
+            // Si ya tiró y todavía no movió, no puede volver a tirar
+            if (_dadoPendiente.ContainsKey(jpId))
+                return Respuesta<ResultadoTurnoDTO>.Validacion("Ya tiraste el dado. Elegí una ficha.");
+
             int valorDado = _random.Next(1, 7);
 
-            // ── Regla especial: racha de 5's ─────────────────────
-            // Si saca 5, sube la racha. Si no, la racha se reinicia.
-            if (valorDado == 5)
-                _rachaCincos.AddOrUpdate(jpId, 1, (_, actual) => actual + 1);
-            else
-                _rachaCincos[jpId] = 0;
-
-            bool huboRachaPenalizacion = false;
-
-            // Al tercer 5 consecutivo, una ficha en juego regresa a casa
-            if (_rachaCincos.TryGetValue(jpId, out int racha) && racha >= 3)
-            {
-                var fichasEnJuego = unidadTrabajo.TEstadoFicha
-                    .Buscar(f => f.JpId == jpId && f.EfEstadoFicha == "EN_JUEGO")
-                    .ValorRetorno?.ToList();
-
-                if (fichasEnJuego != null && fichasEnJuego.Any())
-                {
-                    // Elegimos una ficha al azar entre las que están en el tablero
-                    var fichaPenalizada = fichasEnJuego[_random.Next(fichasEnJuego.Count)];
-                    fichaPenalizada.EfPosicion = 0;
-                    fichaPenalizada.EfEstadoFicha = "EN_CASA";
-                    fichaPenalizada.EfUltimaActualizacion = DateTime.Now;
-                    unidadTrabajo.TEstadoFicha.Modificar(fichaPenalizada);
-                    unidadTrabajo.Completar();
-                    huboRachaPenalizacion = true;
-                }
-
-                _rachaCincos[jpId] = 0; // Reiniciamos la racha tras la penalización
-            }
-
-            // ── Verificamos si el jugador puede mover con este dado ──
-            var todasFichas = unidadTrabajo.TEstadoFicha.Buscar(f => f.JpId == jpId).ValorRetorno?.ToList() ?? new();
-            bool puedeMover = TieneMovimientoPosible(todasFichas, valorDado);
-
-            var resultado = new ResultadoTurnoDTO
-            {
-                ValorDado = valorDado,
-                TurnoExtra = valorDado == 5,
-                HuboCaptura = false,
-                Mensaje = huboRachaPenalizacion
-                    ? "¡Tres 5's seguidos! Una ficha regresó a casa."
-                    : null
-            };
-
-            if (!puedeMover)
-            {
-                // No hay movimiento posible — el turno pasa automáticamente
-                resultado.Mensaje = (resultado.Mensaje ?? "") + " Sin movimientos posibles, turno cedido.";
-                int siguienteJp = SiguienteJugador(parId, jpId, unidadTrabajo);
-                _turnoActual[parId] = siguienteJp;
-                resultado.SiguienteTurnoJpId = siguienteJp;
-                resultado.TurnoExtra = false;
-            }
-            else
-            {
-                // Guardamos el dado como "pendiente" — MoverFicha lo va a pedir
-                _dadoPendiente[jpId] = valorDado;
-                resultado.SiguienteTurnoJpId = jpId; // Sigue siendo su turno hasta que mueva
-            }
-
+            var resultado = EvaluarTirada(parId, jpId, valorDado, unidadTrabajo);
             resultado.Estado = ConstruirEstadoPartida(parId, unidadTrabajo, mapper);
 
             return Respuesta<ResultadoTurnoDTO>.Exito(resultado, "Dado tirado.");
@@ -179,6 +142,88 @@ public class MotorParchisLN : IMotorParchisLN
         }
     }
 
+    // ── EvaluarTirada ────────────────────────────────────────────
+    // Aplica las reglas del 6 y decide si el jugador puede mover o
+    // si hay que ceder el turno. Se usa tanto en la tirada manual
+    // como en la automática por vencimiento de los 30 segundos.
+    private ResultadoTurnoDTO EvaluarTirada(int parId, int jpId, int valorDado, IUnidadTrabajoEF unidadTrabajo)
+    {
+        var mensajes = new List<string>();
+
+        // ── RF-03: turno extra al sacar 6, máximo 3 seguidos ─────
+        if (valorDado == DADO_TURNO_EXTRA)
+            _rachaSeises.AddOrUpdate(jpId, 1, (_, actual) => actual + 1);
+        else
+            _rachaSeises[jpId] = 0;
+
+        int racha = _rachaSeises.TryGetValue(jpId, out int r) ? r : 0;
+        bool alcanzoTope = racha >= MAX_TURNOS_CONSECUTIVOS;
+
+        // ── RF-03: al tercer 6, una ficha vuelve a casa ──────────
+        // La rúbrica es explícita: solo si está dentro del tablero.
+        // Una ficha que ya entró a la recta final NO se penaliza.
+        if (alcanzoTope)
+        {
+            var penalizables = unidadTrabajo.TEstadoFicha
+                .Buscar(f => f.JpId == jpId
+                          && f.EfPosicion >= POS_ANILLO_MIN
+                          && f.EfPosicion <= POS_ANILLO_MAX)
+                .ValorRetorno?.ToList();
+
+            if (penalizables != null && penalizables.Any())
+            {
+                var fichaPenalizada = penalizables[_random.Next(penalizables.Count)];
+                fichaPenalizada.EfPosicion = POS_CASA;
+                fichaPenalizada.EfEstadoFicha = "EN_CASA";
+                fichaPenalizada.EfUltimaActualizacion = DateTime.Now;
+                unidadTrabajo.TEstadoFicha.Modificar(fichaPenalizada);
+                unidadTrabajo.Completar();
+
+                mensajes.Add("¡Tres 6's seguidos! Una ficha regresó a casa.");
+            }
+            else
+            {
+                mensajes.Add("¡Tres 6's seguidos! No hay fichas en el tablero para penalizar.");
+            }
+
+            _rachaSeises[jpId] = 0;
+        }
+
+        var fichas = unidadTrabajo.TEstadoFicha.Buscar(f => f.JpId == jpId).ValorRetorno?.ToList() ?? new();
+        bool puedeMover = ObtenerJugadasPosibles(fichas, valorDado).Any();
+
+        var resultado = new ResultadoTurnoDTO
+        {
+            ValorDado = valorDado,
+            HuboCaptura = false,
+            TurnoExtra = valorDado == DADO_TURNO_EXTRA && !alcanzoTope
+        };
+
+        // Al tercer 6 se pierde el turno extra, aunque haya jugadas
+        if (!puedeMover || alcanzoTope)
+        {
+            if (!puedeMover)
+                mensajes.Add("Sin movimientos posibles, turno cedido.");
+
+            _dadoPendiente.TryRemove(jpId, out _);
+
+            int siguienteJp = SiguienteJugador(parId, jpId, unidadTrabajo);
+            _turnoActual[parId] = siguienteJp;
+            _inicioTurno[parId] = DateTime.Now;
+
+            resultado.SiguienteTurnoJpId = siguienteJp;
+            resultado.TurnoExtra = false;
+        }
+        else
+        {
+            _dadoPendiente[jpId] = valorDado;
+            resultado.SiguienteTurnoJpId = jpId;
+        }
+
+        resultado.Mensaje = mensajes.Any() ? string.Join(" ", mensajes) : null;
+        return resultado;
+    }
+
     // ================================================================
     // MOVER FICHA
     // ================================================================
@@ -186,147 +231,247 @@ public class MotorParchisLN : IMotorParchisLN
     {
         try
         {
-            // Validamos turno
-            if (!_turnoActual.TryGetValue(parId, out int jpIdTurno) || jpIdTurno != jpId)
+            int jpIdTurno = ObtenerJpIdTurno(parId, unidadTrabajo);
+            if (jpIdTurno != jpId)
                 return Respuesta<ResultadoTurnoDTO>.Validacion("No es tu turno.");
 
-            // Validamos que el dado que manda el cliente sea el que
-            // el servidor realmente tiró — nunca confiamos en el cliente
+            // Nunca confiamos en el valor que manda el cliente
             if (!_dadoPendiente.TryGetValue(jpId, out int dadoReal) || dadoReal != valorDado)
                 return Respuesta<ResultadoTurnoDTO>.Validacion("Dado inválido o ya utilizado.");
 
-            // Buscamos la ficha específica que se quiere mover
-            var fichaResp = unidadTrabajo.TEstadoFicha
-                .ObtenerEntidad(f => f.JpId == jpId && f.EfNumeroFicha == numeroFicha);
-            if (!fichaResp.blnIndicadorTransaccion)
-                return Respuesta<ResultadoTurnoDTO>.Validacion("Ficha no encontrada.");
+            return AplicarMovimiento(parId, jpId, numeroFicha, valorDado, false, unidadTrabajo, mapper);
+        }
+        catch (Exception ex)
+        {
+            return Respuesta<ResultadoTurnoDTO>.Error(ex.InnerException?.Message ?? ex.Message);
+        }
+    }
 
-            var ficha = fichaResp.ValorRetorno!;
+    // ── AplicarMovimiento ────────────────────────────────────────
+    // El movimiento en sí, sin validar el turno. Lo comparten el
+    // movimiento manual y el automático por vencimiento del tiempo.
+    private Respuesta<ResultadoTurnoDTO> AplicarMovimiento(
+        int parId, int jpId, int numeroFicha, int valorDado, bool esAutomatico,
+        IUnidadTrabajoEF unidadTrabajo, IMapper mapper)
+    {
+        var fichaResp = unidadTrabajo.TEstadoFicha
+            .ObtenerEntidad(f => f.ParId == parId && f.JpId == jpId && f.EfNumeroFicha == numeroFicha);
 
-            // Buscamos el color del jugador (para saber su recorrido)
-            var jugadorResp = unidadTrabajo.TJugadoresPartida.ObtenerEntidad(j => j.JpId == jpId);
-            if (!jugadorResp.blnIndicadorTransaccion)
-                return Respuesta<ResultadoTurnoDTO>.Validacion("Jugador no encontrado en la partida.");
-            string colorJugador = jugadorResp.ValorRetorno!.JpColorFicha;
+        if (!fichaResp.blnIndicadorTransaccion)
+            return Respuesta<ResultadoTurnoDTO>.Validacion("Ficha no encontrada.");
 
-            // Calculamos la nueva posición según las reglas
-            int? nuevaPosicion = CalcularNuevaPosicion(ficha.EfPosicion, valorDado);
-            if (nuevaPosicion == null)
-                return Respuesta<ResultadoTurnoDTO>.Validacion("Movimiento inválido: debés caer exacto o la ficha no puede salir de casa sin un 5.");
+        var ficha = fichaResp.ValorRetorno!;
 
-            bool huboCaptura = false;
-            bool fichaCoronada = (nuevaPosicion == META);
+        // Guardamos la posición ANTES de tocarla. El código anterior
+        // comparaba contra el valor ya sobrescrito, así que el
+        // historial siempre quedaba con 0.
+        int posicionAnterior = ficha.EfPosicion;
 
-            // Solo revisamos capturas/bloqueos si la ficha queda en el anillo compartido (1-64)
-            if (nuevaPosicion is >= 1 and <= ANILLO_LONGITUD)
+        var jugadorResp = unidadTrabajo.TJugadoresPartida.ObtenerEntidad(j => j.JpId == jpId);
+        if (!jugadorResp.blnIndicadorTransaccion)
+            return Respuesta<ResultadoTurnoDTO>.Validacion("Jugador no encontrado en la partida.");
+
+        string colorJugador = jugadorResp.ValorRetorno!.JpColorFicha;
+
+        if (!OffsetColor.ContainsKey(colorJugador))
+            return Respuesta<ResultadoTurnoDTO>.Validacion($"Color de ficha desconocido: {colorJugador}");
+
+        int? nuevaPosicion = CalcularNuevaPosicion(posicionAnterior, valorDado);
+        if (nuevaPosicion == null)
+            return Respuesta<ResultadoTurnoDTO>.Validacion("Movimiento inválido: hay que caer exacto, y de casa solo se sale con un 5.");
+
+        bool huboCaptura = false;
+        bool fichaCoronada = nuevaPosicion == META;
+
+        // Capturas y bloqueos solo aplican en el anillo compartido
+        if (nuevaPosicion >= POS_ANILLO_MIN && nuevaPosicion <= POS_ANILLO_MAX)
+        {
+            int casillaAnillo = IndiceAnillo(colorJugador, nuevaPosicion.Value);
+
+            if (!CasillasSeguras.Contains(casillaAnillo))
             {
-                int casillaAnillo = (OffsetColor[colorJugador] + (nuevaPosicion.Value - 1)) % ANILLO_LONGITUD;
-                bool esSegura = CasillasSeguras.Contains(casillaAnillo);
+                var todasLasFichas = unidadTrabajo.TEstadoFicha.Buscar(f => f.ParId == parId).ValorRetorno!.ToList();
+                var jugadoresPartida = unidadTrabajo.TJugadoresPartida.Buscar(j => j.ParId == parId).ValorRetorno!.ToList();
 
-                if (!esSegura)
-                {
-                    // Buscamos TODAS las fichas de la partida que estén
-                    // actualmente en esa misma casilla del anillo
-                    var todasLasFichas = unidadTrabajo.TEstadoFicha.Buscar(f => f.ParId == parId).ValorRetorno!.ToList();
-                    var jugadoresPartida = unidadTrabajo.TJugadoresPartida.Buscar(j => j.ParId == parId).ValorRetorno!.ToList();
-
-                    var fichasEnCasilla = todasLasFichas
-                        .Where(f => f.JpId != jpId && f.EfPosicion is >= 1 and <= ANILLO_LONGITUD)
-                        .Where(f =>
-                        {
-                            var colorRival = jugadoresPartida.First(j => j.JpId == f.JpId).JpColorFicha;
-                            int celdaRival = (OffsetColor[colorRival] + (f.EfPosicion - 1)) % ANILLO_LONGITUD;
-                            return celdaRival == casillaAnillo;
-                        })
-                        .GroupBy(f => f.JpId)
-                        .ToList();
-
-                    // Si algún rival tiene 2+ fichas ahí, está BLOQUEADO — no podés aterrizar
-                    if (fichasEnCasilla.Any(grupo => grupo.Count() >= 2))
-                        return Respuesta<ResultadoTurnoDTO>.Validacion("Esa casilla está bloqueada por el rival.");
-
-                    // Si hay rivales con 1 ficha sola, los capturamos (vuelven a casa)
-                    foreach (var grupoRival in fichasEnCasilla)
+                var fichasEnCasilla = todasLasFichas
+                    .Where(f => f.JpId != jpId
+                             && f.EfPosicion >= POS_ANILLO_MIN
+                             && f.EfPosicion <= POS_ANILLO_MAX)
+                    .Where(f =>
                     {
-                        foreach (var fichaRival in grupoRival)
-                        {
-                            fichaRival.EfPosicion = 0;
-                            fichaRival.EfEstadoFicha = "EN_CASA";
-                            fichaRival.EfUltimaActualizacion = DateTime.Now;
-                            unidadTrabajo.TEstadoFicha.Modificar(fichaRival);
-                            huboCaptura = true;
-                        }
-                    }
+                        var colorRival = jugadoresPartida.FirstOrDefault(j => j.JpId == f.JpId)?.JpColorFicha;
+                        if (colorRival == null || !OffsetColor.ContainsKey(colorRival)) return false;
+                        return IndiceAnillo(colorRival, f.EfPosicion) == casillaAnillo;
+                    })
+                    .GroupBy(f => f.JpId)
+                    .ToList();
+
+                // Dos fichas del mismo rival forman bloqueo: no se puede aterrizar
+                if (fichasEnCasilla.Any(grupo => grupo.Count() >= 2))
+                    return Respuesta<ResultadoTurnoDTO>.Validacion("Esa casilla está bloqueada por el rival.");
+
+                foreach (var fichaRival in fichasEnCasilla.SelectMany(g => g))
+                {
+                    fichaRival.EfPosicion = POS_CASA;
+                    fichaRival.EfEstadoFicha = "EN_CASA";
+                    fichaRival.EfUltimaActualizacion = DateTime.Now;
+                    unidadTrabajo.TEstadoFicha.Modificar(fichaRival);
+                    huboCaptura = true;
                 }
             }
+        }
 
-            // Aplicamos el movimiento a la ficha
-            ficha.EfPosicion = nuevaPosicion.Value;
-            ficha.EfEstadoFicha = fichaCoronada ? "CORONADA" : "EN_JUEGO";
-            ficha.EfUltimaActualizacion = DateTime.Now;
-            unidadTrabajo.TEstadoFicha.Modificar(ficha);
+        ficha.EfPosicion = nuevaPosicion.Value;
+        ficha.EfEstadoFicha = fichaCoronada ? "CORONADA" : "EN_JUEGO";
+        ficha.EfUltimaActualizacion = DateTime.Now;
+        unidadTrabajo.TEstadoFicha.Modificar(ficha);
 
-            // Registramos el turno en el historial (para reconexión y auditoría)
-            int numeroTurno = (unidadTrabajo.TTurnoPartida.Buscar(t => t.ParId == parId).ValorRetorno?.Count() ?? 0) + 1;
-            unidadTrabajo.TTurnoPartida.Insertar(new TurnosPartidum
+        int numeroTurno = (unidadTrabajo.TTurnoPartida.Buscar(t => t.ParId == parId).ValorRetorno?.Count() ?? 0) + 1;
+
+        unidadTrabajo.TTurnoPartida.Insertar(new TurnosPartidum
+        {
+            ParId = parId,
+            JpId = jpId,
+            TurNumeroTurno = numeroTurno,
+            TurResultadoDado = valorDado,
+            TurFichaMovida = numeroFicha,
+            TurPosicionAnterior = posicionAnterior,
+            TurPosicionNueva = nuevaPosicion,
+            TurFueAutomatico = esAutomatico,
+            TurHuboCaptura = huboCaptura,
+            TurFecha = DateTime.Now
+        });
+
+        unidadTrabajo.Completar();
+
+        _dadoPendiente.TryRemove(jpId, out _);
+
+        var resultado = new ResultadoTurnoDTO
+        {
+            ValorDado = valorDado,
+            HuboCaptura = huboCaptura,
+            FichaCoronada = fichaCoronada,
+            TurnoExtra = false
+        };
+
+        if (esAutomatico)
+            resultado.Mensaje = "Se acabó el tiempo. El sistema movió por vos.";
+
+        // ── ¿Ganó? ───────────────────────────────────────────────
+        var fichasDelJugador = unidadTrabajo.TEstadoFicha
+            .Buscar(f => f.ParId == parId && f.JpId == jpId).ValorRetorno!.ToList();
+
+        bool gano = fichasDelJugador.Count == 4 && fichasDelJugador.All(f => f.EfEstadoFicha == "CORONADA");
+
+        if (gano)
+        {
+            FinalizarPartida(parId, jpId, unidadTrabajo);
+            resultado.PartidaFinalizada = true;
+            resultado.GanadorJpId = jpId;
+            LimpiarEstadoPartida(parId, unidadTrabajo);
+        }
+        else
+        {
+            // Turno extra solo si sacó 6 y no llegó al tope de 3
+            int racha = _rachaSeises.TryGetValue(jpId, out int r) ? r : 0;
+            bool conservaTurno = valorDado == DADO_TURNO_EXTRA && racha < MAX_TURNOS_CONSECUTIVOS;
+
+            if (conservaTurno)
             {
-                ParId = parId,
-                JpId = jpId,
-                TurNumeroTurno = numeroTurno,
-                TurResultadoDado = valorDado,
-                TurFichaMovida = numeroFicha,
-                TurPosicionAnterior = ficha.EfPosicion == nuevaPosicion ? 0 : (int?)null, // se recalcula abajo si hace falta
-                TurPosicionNueva = nuevaPosicion,
-                TurFueAutomatico = false,
-                TurHuboCaptura = huboCaptura,
-                TurFecha = DateTime.Now
-            });
-
-            unidadTrabajo.Completar();
-
-            // Liberamos el dado pendiente — ya se usó
-            _dadoPendiente.TryRemove(jpId, out _);
-
-            var resultado = new ResultadoTurnoDTO
-            {
-                ValorDado = valorDado,
-                HuboCaptura = huboCaptura,
-                FichaCoronada = fichaCoronada,
-                TurnoExtra = valorDado == 5
-            };
-
-            // ── ¿Ganó la partida? ─────────────────────────────────
-            var fichasDelJugador = unidadTrabajo.TEstadoFicha.Buscar(f => f.JpId == jpId).ValorRetorno!.ToList();
-            bool gano = fichasDelJugador.Count == 4 && fichasDelJugador.All(f => f.EfEstadoFicha == "CORONADA");
-
-            if (gano)
-            {
-                FinalizarPartida(parId, jpId, unidadTrabajo);
-                resultado.PartidaFinalizada = true;
-                resultado.GanadorJpId = jpId;
-
-                // Limpiamos el estado en memoria de esta partida — ya terminó
-                _turnoActual.TryRemove(parId, out _);
-                _rachaCincos.TryRemove(jpId, out _);
+                resultado.SiguienteTurnoJpId = jpId;
+                resultado.TurnoExtra = true;
             }
             else
             {
-                // Si sacó 5, sigue jugando (turno extra). Si no, pasa al siguiente.
-                if (valorDado != 5)
+                int siguienteJp = SiguienteJugador(parId, jpId, unidadTrabajo);
+                _turnoActual[parId] = siguienteJp;
+                resultado.SiguienteTurnoJpId = siguienteJp;
+            }
+
+            _inicioTurno[parId] = DateTime.Now;
+        }
+
+        resultado.Estado = ConstruirEstadoPartida(parId, unidadTrabajo, mapper);
+
+        return Respuesta<ResultadoTurnoDTO>.Exito(resultado, "Movimiento realizado.");
+    }
+
+    // ================================================================
+    // RF-03: TIEMPO LÍMITE DE 30 SEGUNDOS
+    // ================================================================
+    // Devuelve cuántos segundos le quedan al jugador actual. El Hub
+    // usa esto para el temporizador visible y para saber cuándo
+    // ejecutar el movimiento automático.
+    public int SegundosRestantesTurno(int parId)
+    {
+        if (!_inicioTurno.TryGetValue(parId, out var inicio))
+            return SEGUNDOS_LIMITE_TURNO;
+
+        int transcurridos = (int)(DateTime.Now - inicio).TotalSeconds;
+        return Math.Max(0, SEGUNDOS_LIMITE_TURNO - transcurridos);
+    }
+
+    public bool TurnoVencido(int parId) => SegundosRestantesTurno(parId) <= 0;
+
+    // ── EjecutarMovimientoAutomatico ─────────────────────────────
+    // RF-03: "Si el jugador no actúa en 30 segundos, el sistema
+    // ejecuta el movimiento aleatoriamente."
+    //
+    // Cubre los dos casos: que no haya tirado todavía, y que haya
+    // tirado pero no elegido ficha.
+    public Respuesta<ResultadoTurnoDTO> EjecutarMovimientoAutomatico(
+        int parId, int jpId, IUnidadTrabajoEF unidadTrabajo, IMapper mapper)
+    {
+        try
+        {
+            int jpIdTurno = ObtenerJpIdTurno(parId, unidadTrabajo);
+            if (jpIdTurno != jpId)
+                return Respuesta<ResultadoTurnoDTO>.Validacion("El turno ya cambió.");
+
+            // ── Caso 1: no llegó a tirar ─────────────────────────
+            if (!_dadoPendiente.TryGetValue(jpId, out int valorDado))
+            {
+                valorDado = _random.Next(1, 7);
+                var tirada = EvaluarTirada(parId, jpId, valorDado, unidadTrabajo);
+
+                // Si la tirada ya cedió el turno, no hay nada que mover
+                if (tirada.SiguienteTurnoJpId != jpId)
                 {
-                    int siguienteJp = SiguienteJugador(parId, jpId, unidadTrabajo);
-                    _turnoActual[parId] = siguienteJp;
-                    resultado.SiguienteTurnoJpId = siguienteJp;
-                }
-                else
-                {
-                    resultado.SiguienteTurnoJpId = jpId;
+                    tirada.Mensaje = "Se acabó el tiempo. " + (tirada.Mensaje ?? "Turno cedido.");
+                    tirada.Estado = ConstruirEstadoPartida(parId, unidadTrabajo, mapper);
+                    return Respuesta<ResultadoTurnoDTO>.Exito(tirada, "Turno automático.");
                 }
             }
 
-            resultado.Estado = ConstruirEstadoPartida(parId, unidadTrabajo, mapper);
+            // ── Caso 2: tiró pero no eligió ficha ────────────────
+            var fichas = unidadTrabajo.TEstadoFicha
+                .Buscar(f => f.ParId == parId && f.JpId == jpId).ValorRetorno!.ToList();
 
-            return Respuesta<ResultadoTurnoDTO>.Exito(resultado, "Movimiento realizado.");
+            var jugadas = ObtenerJugadasPosibles(fichas, valorDado);
+
+            if (!jugadas.Any())
+            {
+                // Red de seguridad: si no hay jugadas, cedemos el turno
+                _dadoPendiente.TryRemove(jpId, out _);
+                int siguienteJp = SiguienteJugador(parId, jpId, unidadTrabajo);
+                _turnoActual[parId] = siguienteJp;
+                _inicioTurno[parId] = DateTime.Now;
+
+                var cedido = new ResultadoTurnoDTO
+                {
+                    ValorDado = valorDado,
+                    SiguienteTurnoJpId = siguienteJp,
+                    Mensaje = "Sin movimientos posibles, turno cedido.",
+                    Estado = ConstruirEstadoPartida(parId, unidadTrabajo, mapper)
+                };
+
+                return Respuesta<ResultadoTurnoDTO>.Exito(cedido, "Turno cedido.");
+            }
+
+            // Elegimos una jugada al azar, como pide la rúbrica
+            int fichaElegida = jugadas[_random.Next(jugadas.Count)];
+
+            return AplicarMovimiento(parId, jpId, fichaElegida, valorDado, true, unidadTrabajo, mapper);
         }
         catch (Exception ex)
         {
@@ -335,7 +480,7 @@ public class MotorParchisLN : IMotorParchisLN
     }
 
     // ================================================================
-    // OBTENER ESTADO ACTUAL (para reconexión o primera carga)
+    // OBTENER ESTADO ACTUAL
     // ================================================================
     public Respuesta<EstadoPartidaDTO> ObtenerEstado(int parId, IUnidadTrabajoEF unidadTrabajo, IMapper mapper)
     {
@@ -354,41 +499,70 @@ public class MotorParchisLN : IMotorParchisLN
     // HELPERS PRIVADOS
     // ================================================================
 
-    // Calcula la nueva posición de una ficha dado su posición actual
-    // y el valor del dado. Devuelve null si el movimiento no es válido.
+    // Índice físico dentro del anillo compartido
+    private static int IndiceAnillo(string color, int posicionRelativa)
+        => (OffsetColor[color] + posicionRelativa - 1) % ANILLO_LONGITUD;
+
+    // ── ObtenerJpIdTurno ─────────────────────────────────────────
+    // El turno vive en memoria, así que un reinicio del servidor lo
+    // borraba y la partida quedaba muerta: todos recibían "No es tu
+    // turno" para siempre. Ahora lo reconstruimos desde la BD.
+    private int ObtenerJpIdTurno(int parId, IUnidadTrabajoEF unidadTrabajo)
+    {
+        if (_turnoActual.TryGetValue(parId, out int jpIdTurno))
+            return jpIdTurno;
+
+        var jugadores = unidadTrabajo.TJugadoresPartida
+            .Buscar(j => j.ParId == parId).ValorRetorno?
+            .OrderBy(j => j.JpPosicion).ToList();
+
+        if (jugadores == null || !jugadores.Any())
+            return 0;
+
+        var ultimoTurno = unidadTrabajo.TTurnoPartida
+            .Buscar(t => t.ParId == parId).ValorRetorno?
+            .OrderByDescending(t => t.TurNumeroTurno).FirstOrDefault();
+
+        int recuperado = ultimoTurno == null
+            ? jugadores.First().JpId
+            : SiguienteJugador(parId, ultimoTurno.JpId, unidadTrabajo);
+
+        _turnoActual[parId] = recuperado;
+        _inicioTurno[parId] = DateTime.Now;
+
+        return recuperado;
+    }
+
     private int? CalcularNuevaPosicion(int posicionActual, int dado)
     {
-        // Ficha en casa: solo sale con un 5 exacto
-        if (posicionActual == 0)
-            return dado == 5 ? 1 : null;
+        // De casa solo se sale con un 5 exacto
+        if (posicionActual == POS_CASA)
+            return dado == 5 ? POS_ANILLO_MIN : null;
 
         int nueva = posicionActual + dado;
 
-        // No se puede pasar de la meta — hay que caer EXACTO (regla clásica)
-        if (nueva > 68)
-            return null;
-
-        // Llegó justo a la meta
-        if (nueva == 68)
-            return META;
+        // Hay que caer exacto en el centro
+        if (nueva > META) return null;
 
         return nueva;
     }
 
-    // Revisa si el jugador tiene AL MENOS un movimiento posible con este dado
-    private bool TieneMovimientoPosible(List<EstadoFicha> fichas, int dado)
+    // Devuelve los números de ficha que se pueden mover con este dado
+    private List<int> ObtenerJugadasPosibles(List<EstadoFicha> fichas, int dado)
     {
+        var jugadas = new List<int>();
+
         foreach (var ficha in fichas)
         {
             if (ficha.EfEstadoFicha == "CORONADA") continue;
 
-            if (ficha.EfPosicion == 0 && dado == 5) return true;
-            if (ficha.EfPosicion > 0 && ficha.EfPosicion + dado <= 68) return true;
+            if (CalcularNuevaPosicion(ficha.EfPosicion, dado) != null)
+                jugadas.Add(ficha.EfNumeroFicha);
         }
-        return false;
+
+        return jugadas;
     }
 
-    // Determina quién sigue en el turno, ciclando por JpPosicion (1→2→3→4→1...)
     private int SiguienteJugador(int parId, int jpIdActual, IUnidadTrabajoEF unidadTrabajo)
     {
         var jugadores = unidadTrabajo.TJugadoresPartida
@@ -398,11 +572,32 @@ public class MotorParchisLN : IMotorParchisLN
             .ToList();
 
         int indiceActual = jugadores.FindIndex(j => j.JpId == jpIdActual);
+        if (indiceActual < 0) return jugadores.First().JpId;
+
         int indiceSiguiente = (indiceActual + 1) % jugadores.Count;
         return jugadores[indiceSiguiente].JpId;
     }
 
-    // Arma la "foto" completa del estado de la partida para mandar al frontend
+    // Libera todo el estado en memoria de una partida terminada.
+    // Antes solo se borraba la racha del ganador y las de los otros
+    // tres jugadores quedaban acumulándose en el diccionario.
+    private void LimpiarEstadoPartida(int parId, IUnidadTrabajoEF unidadTrabajo)
+    {
+        _turnoActual.TryRemove(parId, out _);
+        _inicioTurno.TryRemove(parId, out _);
+
+        var jugadores = unidadTrabajo.TJugadoresPartida
+            .Buscar(j => j.ParId == parId).ValorRetorno?.ToList();
+
+        if (jugadores == null) return;
+
+        foreach (var jugador in jugadores)
+        {
+            _rachaSeises.TryRemove(jugador.JpId, out _);
+            _dadoPendiente.TryRemove(jugador.JpId, out _);
+        }
+    }
+
     private EstadoPartidaDTO ConstruirEstadoPartida(int parId, IUnidadTrabajoEF unidadTrabajo, IMapper mapper)
     {
         var partida = unidadTrabajo.TPartida.ObtenerEntidad(p => p.ParId == parId).ValorRetorno;
@@ -418,7 +613,8 @@ public class MotorParchisLN : IMotorParchisLN
 
         foreach (var jugador in jugadores)
         {
-            string nombre = "Bot";
+            string nombre = $"Bot {jugador.JpPosicion}";
+
             if (!jugador.JpEsBot && jugador.UsuId.HasValue)
             {
                 var usuario = unidadTrabajo.TUsuario.ObtenerEntidad(u => u.UsuId == jugador.UsuId.Value).ValorRetorno;
@@ -453,7 +649,6 @@ public class MotorParchisLN : IMotorParchisLN
         return dto;
     }
 
-    // Cierra la partida: reparte el premio, registra historial y transacciones
     private void FinalizarPartida(int parId, int jpIdGanador, IUnidadTrabajoEF unidadTrabajo)
     {
         var partida = unidadTrabajo.TPartida.ObtenerEntidad(p => p.ParId == parId).ValorRetorno!;
@@ -467,11 +662,9 @@ public class MotorParchisLN : IMotorParchisLN
 
         foreach (var jugador in jugadores)
         {
-            // Marcamos quién ganó en la tabla de jugadores de la partida
             jugador.JpEsGanador = (jugador.JpId == jpIdGanador);
             unidadTrabajo.TJugadoresPartida.Modificar(jugador);
 
-            // Los bots no tienen cuenta de usuario — no reciben nada
             if (jugador.JpEsBot || !jugador.UsuId.HasValue) continue;
 
             bool esGanador = jugador.JpId == jpIdGanador;
@@ -479,7 +672,6 @@ public class MotorParchisLN : IMotorParchisLN
 
             if (esGanador)
             {
-                // Acreditamos el premio — este campo alimenta el ranking global
                 usuario.UsuMonedasTotal += sala.SalPremioBase;
                 usuario.UsuMonedasGanadasPartida += sala.SalPremioBase;
                 unidadTrabajo.TUsuario.Modificar(usuario);
@@ -496,7 +688,6 @@ public class MotorParchisLN : IMotorParchisLN
                 });
             }
 
-            // Registramos el resultado en el historial (para estadísticas y % victoria)
             unidadTrabajo.THistorialPartida.Insertar(new HistorialPartida
             {
                 UsuId = usuario.UsuId,
