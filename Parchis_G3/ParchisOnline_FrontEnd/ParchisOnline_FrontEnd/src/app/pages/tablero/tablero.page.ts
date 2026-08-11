@@ -80,6 +80,14 @@ export class TableroPage implements OnInit, OnDestroy {
   mensajesFlotantes: Map<number, string> = new Map();
   private timersFlotantes: Map<number, any> = new Map();
 
+  // ── Animaciones de captura y coronación (RF-18) ───────────────
+  // Claves "jpId-numeroFicha" de las fichas que están animándose.
+  // Se guarda la clave y no la ficha porque el objeto se reemplaza
+  // en cada estado nuevo que llega del servidor.
+  fichasCapturadas: Set<string> = new Set();
+  fichasCoronadas:  Set<string> = new Set();
+  private timersAnimacion: any[] = [];
+
   filas    = Array.from({ length: 15 }, (_, i) => i + 1);
   columnas = Array.from({ length: 15 }, (_, i) => i + 1);
 
@@ -138,6 +146,9 @@ export class TableroPage implements OnInit, OnDestroy {
 
     this.timersFlotantes.forEach(t => clearTimeout(t));
     this.timersFlotantes.clear();
+
+    this.timersAnimacion.forEach(t => clearTimeout(t));
+    this.timersAnimacion = [];
 
     this.subs.forEach(s => s.unsubscribe());
   }
@@ -429,6 +440,13 @@ export class TableroPage implements OnInit, OnDestroy {
   private procesarMovimiento(resultado: any): void {
     if (!resultado) return;
 
+    // Las fichas capturadas se detectan comparando el estado anterior
+    // con el nuevo: hay que hacerlo ANTES de aplicar el estado, o el
+    // "antes" ya se perdió.
+    const capturadas = resultado.HuboCaptura
+      ? this.detectarCapturadas(resultado.Estado)
+      : [];
+
     this.esperandoMover = false;
     this.dadoTirado     = false;
     this.fichasMovibles = [];
@@ -437,9 +455,84 @@ export class TableroPage implements OnInit, OnDestroy {
       this.aplicarEstado(resultado.Estado);
     }
 
-    if (resultado.HuboCaptura)   this.mostrarAviso('¡Captura!');
-    if (resultado.FichaCoronada) this.mostrarAviso('¡Ficha coronada!');
-    if (resultado.Mensaje)       this.mostrarAviso(resultado.Mensaje);
+    // ── RF-18 ────────────────────────────────────────────────
+    if (resultado.HuboCaptura) {
+      this.animarCaptura(capturadas);
+      this.mostrarAviso('¡Captura!');
+    }
+
+    if (resultado.FichaCoronada) {
+      this.animarCoronacion(resultado.JpId ?? this.estado?.TurnoActualJpId, resultado.NumeroFicha);
+      this.mostrarAviso('¡Ficha coronada!');
+    }
+
+    if (resultado.Mensaje) this.mostrarAviso(resultado.Mensaje);
+  }
+
+  // ── detectarCapturadas (RF-18) ───────────────────────────────
+  // El servidor avisa que hubo captura pero no dice cuáles fichas.
+  // Se deducen buscando las que estaban en el tablero y en el estado
+  // nuevo aparecen en casa.
+  private detectarCapturadas(estadoNuevo: any): string[] {
+    if (!estadoNuevo?.Fichas || !this.estado?.Fichas) return [];
+
+    const capturadas: string[] = [];
+
+    for (const antes of this.estado.Fichas) {
+      if (antes.Posicion === POS_CASA) continue;
+
+      const ahora = estadoNuevo.Fichas.find(
+        (f: any) => f.JpId === antes.JpId && f.NumeroFicha === antes.NumeroFicha
+      );
+
+      if (ahora && ahora.Posicion === POS_CASA) {
+        capturadas.push(`${antes.JpId}-${antes.NumeroFicha}`);
+      }
+    }
+
+    return capturadas;
+  }
+
+  private animarCaptura(claves: string[]): void {
+    if (claves.length === 0) return;
+
+    const copia = new Set(this.fichasCapturadas);
+    claves.forEach(c => copia.add(c));
+    this.fichasCapturadas = copia;
+
+    // 600 ms: lo que dura el keyframe fichaCapturada
+    const timer = setTimeout(() => {
+      const limpia = new Set(this.fichasCapturadas);
+      claves.forEach(c => limpia.delete(c));
+      this.fichasCapturadas = limpia;
+    }, 600);
+
+    this.timersAnimacion.push(timer);
+  }
+
+  private animarCoronacion(jpId: number, numeroFicha: number): void {
+    if (!jpId || !numeroFicha) return;
+
+    const clave = `${jpId}-${numeroFicha}`;
+    this.fichasCoronadas = new Set(this.fichasCoronadas).add(clave);
+
+    // 2400 ms: el keyframe corre dos veces a 1.2s cada una
+    const timer = setTimeout(() => {
+      const limpia = new Set(this.fichasCoronadas);
+      limpia.delete(clave);
+      this.fichasCoronadas = limpia;
+    }, 2400);
+
+    this.timersAnimacion.push(timer);
+  }
+
+  // Los usa el template para decidir qué clase poner en cada ficha
+  esFichaCapturada(ficha: any): boolean {
+    return this.fichasCapturadas.has(`${ficha.JpId}-${ficha.NumeroFicha}`);
+  }
+
+  esFichaCoronada(ficha: any): boolean {
+    return this.fichasCoronadas.has(`${ficha.JpId}-${ficha.NumeroFicha}`);
   }
 
   // ================================================================

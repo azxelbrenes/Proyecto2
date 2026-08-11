@@ -67,6 +67,8 @@
                 [ngClass]="'ficha-' + ficha.Color.toLowerCase()"
                 [class.ficha-movible]="esFichaMovible(ficha)"
                 [class.ficha-mia]="ficha.JpId === jpId"
+                [class.ficha-capturada]="esFichaCapturada(ficha)"
+                [class.ficha-coronada]="esFichaCoronada(ficha)"
                 (click)="moverFicha(ficha)">
               </div>
             </div>
