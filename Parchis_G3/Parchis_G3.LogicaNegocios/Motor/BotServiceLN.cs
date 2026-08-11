@@ -11,19 +11,35 @@ public class BotServiceLN : IBotServiceLN
 {
     private readonly IMotorParchisLN _motor;
 
-    // Mismas constantes del tablero que usa el Motor —
-    // deben coincidir para que los cálculos sean correctos
-    private const int ANILLO_LONGITUD = 64;
+    // ================================================================
+    // GEOMETRÍA DEL TABLERO
+    // ================================================================
+    // Estos valores DEBEN coincidir con MotorParchisLN y con
+    // tablero.config.ts del frontend. Estaban en 64/69 mientras el
+    // motor ya usaba 52/57: el bot calculaba capturas contra casillas
+    // que no existen e intentaba coronar en 69, que el motor rechaza.
+    private const int ANILLO_LONGITUD = 52;
 
+    private const int POS_CASA = 0;
+    private const int POS_ANILLO_MIN = 1;
+    private const int POS_ANILLO_MAX = 51;
+    private const int META = 57;
+
+    // El recorrido arranca en la salida del AZUL, igual que el motor
     private static readonly Dictionary<string, int> OffsetColor = new()
     {
-        { "ROJO",     0 },
-        { "AZUL",    16 },
-        { "VERDE",   32 },
-        { "AMARILLO",48 }
+        { "AZUL",     0  },
+        { "VERDE",    13 },
+        { "AMARILLO", 26 },
+        { "ROJO",     39 }
     };
 
-    private static readonly HashSet<int> CasillasSeguras = new(OffsetColor.Values);
+    // Las 4 salidas más las 4 estrellas intermedias
+    private static readonly HashSet<int> CasillasSeguras = new()
+    {
+        0, 13, 26, 39,     // salidas
+        8, 21, 34, 47      // estrellas
+    };
 
     public BotServiceLN(IMotorParchisLN motor)
     {
@@ -32,7 +48,7 @@ public class BotServiceLN : IBotServiceLN
 
     // ================================================================
     // ¿ES TURNO DE UN BOT?
-    
+    // ================================================================
     // El Hub llama a esto después de cada jugada humana para saber
     // si tiene que disparar el turno automático del bot.
     public bool EsTurnoDeBot(int parId, IUnidadTrabajoEF unidadTrabajo, out int jpIdBot)
@@ -41,14 +57,12 @@ public class BotServiceLN : IBotServiceLN
 
         try
         {
-            // Consultamos el estado actual para saber de quién es el turno
             var estadoResp = _motor.ObtenerEstado(parId, unidadTrabajo, null!);
             if (!estadoResp.blnIndicadorTransaccion) return false;
 
             int turnoActual = estadoResp.ValorRetorno!.TurnoActualJpId;
             if (turnoActual <= 0) return false;
 
-            // Buscamos ese jugador y verificamos si es bot
             var jugadorResp = unidadTrabajo.TJugadoresPartida
                 .ObtenerEntidad(j => j.JpId == turnoActual);
 
@@ -76,8 +90,8 @@ public class BotServiceLN : IBotServiceLN
         try
         {
             // ── PASO 1: El bot tira el dado ──────────────────────
-            // Usa exactamente el mismo método que un humano — así
-            // las reglas se aplican igual y no hay ventaja injusta
+            // Usa exactamente el mismo método que un humano — así las
+            // reglas se aplican igual y no hay ventaja injusta.
             var resultadoDado = _motor.TirarDado(parId, jpIdBot, unidadTrabajo, mapper);
 
             if (!resultadoDado.blnIndicadorTransaccion)
@@ -85,8 +99,8 @@ public class BotServiceLN : IBotServiceLN
 
             int valorDado = resultadoDado.ValorRetorno!.ValorDado;
 
-            // Si el motor ya cedió el turno (sin movimientos posibles),
-            // no hay nada más que hacer
+            // Si el motor ya cedió el turno (sin movimientos posibles
+            // o tercer 6 seguido), no hay nada más que hacer
             if (resultadoDado.ValorRetorno.SiguienteTurnoJpId != jpIdBot)
                 return resultadoDado;
 
@@ -94,11 +108,7 @@ public class BotServiceLN : IBotServiceLN
             int? mejorFicha = ElegirMejorFicha(parId, jpIdBot, valorDado, unidadTrabajo);
 
             if (mejorFicha == null)
-            {
-                // No debería pasar (el motor ya validó que hay movimientos)
-                // pero por seguridad devolvemos el resultado del dado
                 return resultadoDado;
-            }
 
             // ── PASO 3: Ejecutar el movimiento ───────────────────
             var resultadoMovimiento = _motor.MoverFicha(
@@ -126,40 +136,43 @@ public class BotServiceLN : IBotServiceLN
     // le asigna un puntaje, y devuelve el número de la mejor ficha.
     private int? ElegirMejorFicha(int parId, int jpIdBot, int valorDado, IUnidadTrabajoEF unidadTrabajo)
     {
-        // Traemos las fichas del bot
         var fichasBot = unidadTrabajo.TEstadoFicha
-            .Buscar(f => f.JpId == jpIdBot)
+            .Buscar(f => f.ParId == parId && f.JpId == jpIdBot)
             .ValorRetorno?.ToList() ?? new List<EstadoFicha>();
 
-        // Traemos TODAS las fichas de la partida (para detectar capturas)
+        // Todas las fichas de la partida, para detectar capturas
         var todasLasFichas = unidadTrabajo.TEstadoFicha
             .Buscar(f => f.ParId == parId)
             .ValorRetorno?.ToList() ?? new List<EstadoFicha>();
 
-        // Traemos los jugadores (para saber el color de cada ficha)
         var jugadores = unidadTrabajo.TJugadoresPartida
             .Buscar(j => j.ParId == parId)
             .ValorRetorno?.ToList() ?? new List<JugadoresPartidum>();
 
-        string colorBot = jugadores.FirstOrDefault(j => j.JpId == jpIdBot)?.JpColorFicha ?? "ROJO";
+        string colorBot = jugadores.FirstOrDefault(j => j.JpId == jpIdBot)?.JpColorFicha ?? "AZUL";
+
+        // Si el color no está mapeado no podemos calcular nada
+        if (!OffsetColor.ContainsKey(colorBot))
+            colorBot = "AZUL";
 
         int? mejorFicha = null;
-        int mejorPuntaje = -1;
+        int mejorPuntaje = int.MinValue;
 
         foreach (var ficha in fichasBot)
         {
-            // Las fichas coronadas ya no se mueven
             if (ficha.EfEstadoFicha == "CORONADA") continue;
 
-            // Calculamos a dónde iría esta ficha con este dado
             int? nuevaPosicion = SimularMovimiento(ficha.EfPosicion, valorDado);
-            if (nuevaPosicion == null) continue; // Movimiento inválido, saltamos
+            if (nuevaPosicion == null) continue;
 
-            // Le asignamos un puntaje según qué tan buena es la jugada
             int puntaje = EvaluarJugada(
                 ficha, nuevaPosicion.Value, colorBot,
                 todasLasFichas, jugadores, jpIdBot
             );
+
+            // -1 significa casilla bloqueada por el rival: el motor
+            // rechazaría el movimiento, así que ni lo consideramos
+            if (puntaje < 0) continue;
 
             if (puntaje > mejorPuntaje)
             {
@@ -172,18 +185,17 @@ public class BotServiceLN : IBotServiceLN
     }
 
     // ── Simula el movimiento sin ejecutarlo ─────────────────────────
-    // Misma lógica que CalcularNuevaPosicion del Motor
+    // Misma lógica que CalcularNuevaPosicion del Motor.
     private int? SimularMovimiento(int posicionActual, int dado)
     {
-        // En casa: solo sale con 5
-        if (posicionActual == 0)
-            return dado == 5 ? 1 : null;
+        // De casa solo se sale con un 5
+        if (posicionActual == POS_CASA)
+            return dado == 5 ? POS_ANILLO_MIN : null;
 
         int nueva = posicionActual + dado;
 
-        // No se puede pasar de la meta — hay que caer exacto
-        if (nueva > 68) return null;
-        if (nueva == 68) return 69; // META
+        // Hay que caer exacto en el centro
+        if (nueva > META) return null;
 
         return nueva;
     }
@@ -197,26 +209,21 @@ public class BotServiceLN : IBotServiceLN
         List<JugadoresPartidum> jugadores,
         int jpIdBot)
     {
-        // ── PRIORIDAD 2: Coronar una ficha → 90 puntos ───────────
-        if (nuevaPosicion == 69)
-            return 90;
-
-        // ── PRIORIDAD 3: Sacar ficha de casa → 70 puntos ─────────
-        if (ficha.EfPosicion == 0)
-            return 70;
-
         // ── PRIORIDAD 1: Capturar ficha rival → 100 puntos ───────
-        // Solo hay captura si la ficha queda en el anillo compartido
-        if (nuevaPosicion is >= 1 and <= ANILLO_LONGITUD)
+        // Va primero: capturar vale más que coronar, porque manda una
+        // ficha enemiga de vuelta a casa. Antes este bloque estaba
+        // después de coronar y de salir de casa, así que el bot nunca
+        // llegaba a evaluarlo si podía hacer cualquiera de las dos.
+        if (nuevaPosicion >= POS_ANILLO_MIN && nuevaPosicion <= POS_ANILLO_MAX)
         {
             int casillaDestino = (OffsetColor[colorBot] + (nuevaPosicion - 1)) % ANILLO_LONGITUD;
 
-            // Si es casilla segura no hay captura posible
             if (!CasillasSeguras.Contains(casillaDestino))
             {
-                // Buscamos si hay una ficha rival sola en esa casilla
                 var fichasRivalesAhi = todasLasFichas
-                    .Where(f => f.JpId != jpIdBot && f.EfPosicion is >= 1 and <= ANILLO_LONGITUD)
+                    .Where(f => f.JpId != jpIdBot
+                             && f.EfPosicion >= POS_ANILLO_MIN
+                             && f.EfPosicion <= POS_ANILLO_MAX)
                     .Where(f =>
                     {
                         var colorRival = jugadores.FirstOrDefault(j => j.JpId == f.JpId)?.JpColorFicha;
@@ -228,21 +235,31 @@ public class BotServiceLN : IBotServiceLN
                     .GroupBy(f => f.JpId)
                     .ToList();
 
-                // Si hay un rival con 2+ fichas, está bloqueado — no podemos ir
+                // Rival con 2+ fichas = bloqueo, el motor lo rechaza
                 if (fichasRivalesAhi.Any(g => g.Count() >= 2))
-                    return -1; // Movimiento imposible
+                    return -1;
 
-                // Si hay exactamente un rival con 1 ficha → ¡captura!
                 if (fichasRivalesAhi.Any())
                     return 100;
             }
         }
 
-        // ── PRIORIDAD 4: Avanzar → 10 a 60 puntos ────────────────
-        // Entre más cerca de la meta esté, más valioso es avanzarla.
-        // La posición máxima antes de coronar es 68, así que
-        // escalamos proporcionalmente hasta 60 puntos.
-        int puntajeAvance = 10 + (int)((nuevaPosicion / 68.0) * 50);
-        return puntajeAvance;
+        // ── PRIORIDAD 2: Coronar una ficha → 90 puntos ───────────
+        if (nuevaPosicion == META)
+            return 90;
+
+        // ── PRIORIDAD 3: Sacar ficha de casa → 70 puntos ─────────
+        if (ficha.EfPosicion == POS_CASA)
+            return 70;
+
+        // ── PRIORIDAD 4: Entrar a la recta final → 65 puntos ─────
+        // Una ficha en la recta ya no puede ser capturada
+        if (nuevaPosicion > POS_ANILLO_MAX)
+            return 65;
+
+        // ── PRIORIDAD 5: Avanzar → 10 a 60 puntos ────────────────
+        // Entre más cerca de la meta, más valioso es avanzar.
+        // Se escala sobre META (57), no sobre 68 como antes.
+        return 10 + (int)((nuevaPosicion / (double)META) * 50);
     }
 }
