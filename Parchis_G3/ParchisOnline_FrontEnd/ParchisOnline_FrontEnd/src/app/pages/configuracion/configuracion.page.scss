@@ -1,0 +1,257 @@
+$dorado:       #FFC300;
+$dorado-claro: #FFDD55;
+$rojo:         #E53935;
+$fondo-oscuro: #1C1230;
+
+.config-content {
+  --background: radial-gradient(circle at top, #2D1B4E 0%, #1C1230 45%, #0D0818 100%);
+}
+
+.config-container {
+  max-width: 520px;
+  margin:    0 auto;
+  padding:   1rem 1rem 3rem;
+}
+
+// ── Header ───────────────────────────────────────────────────────
+.header-bar {
+  display:       flex;
+  align-items:   center;
+  gap:           0.8rem;
+  margin-bottom: 1.4rem;
+  padding-top:   0.5rem;
+
+  .btn-volver {
+    color:         rgba(255, 255, 255, 0.75);
+    font-size:     1.5rem;
+    cursor:        pointer;
+    padding:       0.3rem;
+    border-radius: 8px;
+    transition:    background 0.15s ease;
+
+    &:active { background: rgba(255, 255, 255, 0.1); }
+  }
+
+  .header-titulo {
+    display:     flex;
+    align-items: center;
+    gap:         0.5rem;
+    color:       white;
+    font-size:   1.25rem;
+    font-weight: 800;
+  }
+
+  .titulo-icon {
+    color:     $dorado;
+    font-size: 1.4rem;
+  }
+}
+
+// ── Loading ──────────────────────────────────────────────────────
+.loading-config {
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  justify-content: center;
+  padding:         4rem 0;
+  color:           rgba(255, 255, 255, 0.6);
+
+  p { margin-top: 1rem; font-size: 0.9rem; }
+}
+
+// ── Títulos de sección ───────────────────────────────────────────
+.seccion-titulo {
+  display:        flex;
+  align-items:    center;
+  gap:            0.5rem;
+  color:          $dorado-claro;
+  font-size:      0.8rem;
+  font-weight:    800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin:         1.6rem 0 0.7rem 0.2rem;
+
+  ion-icon { font-size: 1rem; }
+}
+
+// ── Tarjetas ─────────────────────────────────────────────────────
+.config-card {
+  background:    rgba(255, 255, 255, 0.05);
+  border:        1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding:       1.1rem;
+}
+
+// ── Campos ───────────────────────────────────────────────────────
+.campo {
+  margin-bottom: 1.1rem;
+
+  &:last-of-type { margin-bottom: 0.9rem; }
+}
+
+.campo-label {
+  display:       block;
+  color:         rgba(255, 255, 255, 0.65);
+  font-size:     0.72rem;
+  font-weight:   700;
+  margin-bottom: 0.35rem;
+}
+
+.campo-input {
+  --background:     rgba(255, 255, 255, 0.08);
+  --color:          white;
+  --placeholder-color: rgba(255, 255, 255, 0.3);
+  --padding-start:  0.9rem;
+  --padding-end:    0.9rem;
+  --border-radius:  10px;
+  border:           1px solid rgba(255, 255, 255, 0.15);
+  border-radius:    10px;
+  font-size:        0.9rem;
+
+  &.has-focus { border-color: rgba(255, 195, 0, 0.5); }
+}
+
+// El correo se muestra pero no se edita
+.campo-readonly {
+  background:    rgba(255, 255, 255, 0.04);
+  border:        1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding:       0.7rem 0.9rem;
+  color:         rgba(255, 255, 255, 0.45);
+  font-size:     0.9rem;
+}
+
+.campo-hint {
+  display:   block;
+  color:     rgba(255, 255, 255, 0.35);
+  font-size: 0.68rem;
+  margin-top: 0.3rem;
+}
+
+// ── Avatares ─────────────────────────────────────────────────────
+.avatares-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap:     0.5rem;
+}
+
+.avatar-opcion {
+  aspect-ratio:    1;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  font-size:       1.4rem;
+  background:      rgba(255, 255, 255, 0.06);
+  border:          2px solid transparent;
+  border-radius:   12px;
+  cursor:          pointer;
+  transition:      all 0.18s ease;
+
+  &:active { transform: scale(0.92); }
+
+  &.avatar-activo {
+    background:   rgba(255, 195, 0, 0.18);
+    border-color: $dorado;
+    transform:    scale(1.06);
+  }
+}
+
+// ── Toggles ──────────────────────────────────────────────────────
+.toggle-row {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  gap:             1rem;
+  padding:         0.8rem 0;
+  border-bottom:   1px solid rgba(255, 255, 255, 0.07);
+
+  &:last-child { border-bottom: none; }
+
+  ion-toggle {
+    --track-background-checked: #{$dorado};
+    --handle-background-checked: white;
+    flex-shrink: 0;
+  }
+}
+
+.toggle-info {
+  display:     flex;
+  align-items: center;
+  gap:         0.7rem;
+
+  ion-icon {
+    color:       $dorado;
+    font-size:   1.2rem;
+    flex-shrink: 0;
+  }
+}
+
+.toggle-nombre {
+  color:       white;
+  font-size:   0.86rem;
+  font-weight: 700;
+}
+
+.toggle-desc {
+  color:      rgba(255, 255, 255, 0.4);
+  font-size:  0.7rem;
+  margin-top: 0.1rem;
+}
+
+// ── Mostrar contraseñas ──────────────────────────────────────────
+.ver-password {
+  display:       flex;
+  align-items:   center;
+  gap:           0.4rem;
+  color:         rgba(255, 255, 255, 0.5);
+  font-size:     0.75rem;
+  cursor:        pointer;
+  margin-bottom: 1rem;
+  width:         fit-content;
+
+  ion-icon { font-size: 1rem; }
+
+  &:active { color: $dorado-claro; }
+}
+
+// ── Botones ──────────────────────────────────────────────────────
+.btn-guardar {
+  --background:        linear-gradient(135deg, #{$dorado}, #E0A80E);
+  --background-hover:  #E0A80E;
+  --color:             #{$fondo-oscuro};
+  --border-radius:     12px;
+  font-weight:         800;
+  font-size:           0.85rem;
+  margin-top:          0.4rem;
+}
+
+.btn-logout {
+  --background:    rgba(255, 255, 255, 0.08);
+  --color:         rgba(255, 255, 255, 0.85);
+  --border-radius: 12px;
+  --border-width:  1px;
+  --border-style:  solid;
+  --border-color:  rgba(255, 255, 255, 0.15);
+  font-weight:     700;
+  font-size:       0.85rem;
+  margin-bottom:   0.7rem;
+}
+
+.btn-eliminar {
+  --background:    rgba(229, 57, 53, 0.14);
+  --color:         #FF8A80;
+  --border-radius: 12px;
+  --border-width:  1px;
+  --border-style:  solid;
+  --border-color:  rgba(229, 57, 53, 0.4);
+  font-weight:     700;
+  font-size:       0.85rem;
+}
+
+.aviso-eliminar {
+  color:       rgba(255, 255, 255, 0.35);
+  font-size:   0.7rem;
+  line-height: 1.45;
+  margin:      0.8rem 0 0;
+  text-align:  center;
+}

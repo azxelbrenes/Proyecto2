@@ -245,6 +245,9 @@ export class PerfilPage implements OnInit {
   irARanking(): void {
     this.router.navigate(['/ranking']);
   }
+  irAConfiguracion(): void {
+  this.router.navigate(['/configuracion']);
+}
 
   // Mandamos al jugador a la tienda para cambiar el equipamiento
   // porque ahí ya está toda la lógica de equipar. No la duplicamos

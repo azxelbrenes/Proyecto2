@@ -1,0 +1,211 @@
+<ion-content class="config-content" [fullscreen]="true">
+
+  <div class="config-container">
+
+    <!-- ── Header ─────────────────────────────────────────────── -->
+    <div class="header-bar">
+      <ion-icon name="arrow-back" class="btn-volver" (click)="volver()"></ion-icon>
+      <div class="header-titulo">
+        <ion-icon name="settings-outline" class="titulo-icon"></ion-icon>
+        <span>Configuración</span>
+      </div>
+    </div>
+
+    <!-- ── Loading ────────────────────────────────────────────── -->
+    <div class="loading-config" *ngIf="cargando">
+      <ion-spinner name="crescent" color="warning"></ion-spinner>
+      <p>Cargando configuración...</p>
+    </div>
+
+    <div *ngIf="!cargando">
+
+      <!-- ══ DATOS PERSONALES ═══════════════════════════════════ -->
+      <div class="seccion-titulo">
+        <ion-icon name="person-outline"></ion-icon>
+        Datos personales
+      </div>
+
+      <div class="config-card">
+
+        <div class="campo">
+          <label class="campo-label">Nombre de jugador</label>
+          <ion-input
+            [(ngModel)]="nombre"
+            class="campo-input"
+            maxlength="100"
+            placeholder="Tu nombre">
+          </ion-input>
+        </div>
+
+        <div class="campo">
+          <label class="campo-label">Correo</label>
+          <div class="campo-readonly">{{ usuario?.UsuCorreo }}</div>
+          <span class="campo-hint">El correo no se puede modificar</span>
+        </div>
+
+        <div class="campo">
+          <label class="campo-label">Avatar</label>
+          <div class="avatares-grid">
+            <div
+              class="avatar-opcion"
+              *ngFor="let n of avatares"
+              [class.avatar-activo]="avatar === n"
+              (click)="seleccionarAvatar(n)">
+              {{ ['🎮','🎲','👑','🚀','🐉','⭐'][n - 1] }}
+            </div>
+          </div>
+        </div>
+
+        <ion-button
+          expand="block"
+          class="btn-guardar"
+          [disabled]="guardando"
+          (click)="guardarDatos()">
+          <ion-icon name="save-outline" slot="start"></ion-icon>
+          Guardar cambios
+        </ion-button>
+
+      </div>
+
+      <!-- ══ PREFERENCIAS ═══════════════════════════════════════ -->
+      <div class="seccion-titulo">
+        <ion-icon name="volume-high-outline"></ion-icon>
+        Preferencias
+      </div>
+
+      <div class="config-card">
+
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <ion-icon name="volume-high-outline"></ion-icon>
+            <div>
+              <div class="toggle-nombre">Efectos de sonido</div>
+              <div class="toggle-desc">Dado, movimientos y capturas</div>
+            </div>
+          </div>
+          <ion-toggle
+            [(ngModel)]="sonidosActivos"
+            (ionChange)="guardarPreferencias()">
+          </ion-toggle>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <ion-icon name="musical-notes-outline"></ion-icon>
+            <div>
+              <div class="toggle-nombre">Música de fondo</div>
+              <div class="toggle-desc">Durante las partidas</div>
+            </div>
+          </div>
+          <ion-toggle
+            [(ngModel)]="musicaActiva"
+            (ionChange)="guardarPreferencias()">
+          </ion-toggle>
+        </div>
+
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <ion-icon name="notifications-outline"></ion-icon>
+            <div>
+              <div class="toggle-nombre">Notificaciones</div>
+              <div class="toggle-desc">Recompensas diarias y tu turno</div>
+            </div>
+          </div>
+          <ion-toggle
+            [(ngModel)]="notificacionesActivas"
+            (ionChange)="guardarPreferencias()">
+          </ion-toggle>
+        </div>
+
+      </div>
+
+      <!-- ══ SEGURIDAD ══════════════════════════════════════════ -->
+      <div class="seccion-titulo">
+        <ion-icon name="lock-closed-outline"></ion-icon>
+        Cambiar contraseña
+      </div>
+
+      <div class="config-card">
+
+        <div class="campo">
+          <label class="campo-label">Contraseña actual</label>
+          <ion-input
+            [(ngModel)]="passwordActual"
+            [type]="mostrarPasswords ? 'text' : 'password'"
+            class="campo-input"
+            placeholder="••••••••">
+          </ion-input>
+        </div>
+
+        <div class="campo">
+          <label class="campo-label">Nueva contraseña</label>
+          <ion-input
+            [(ngModel)]="passwordNueva"
+            [type]="mostrarPasswords ? 'text' : 'password'"
+            class="campo-input"
+            placeholder="Mínimo 8 caracteres">
+          </ion-input>
+        </div>
+
+        <div class="campo">
+          <label class="campo-label">Repetir nueva contraseña</label>
+          <ion-input
+            [(ngModel)]="passwordRepetir"
+            [type]="mostrarPasswords ? 'text' : 'password'"
+            class="campo-input"
+            placeholder="••••••••">
+          </ion-input>
+        </div>
+
+        <div class="ver-password" (click)="togglePasswords()">
+          <ion-icon [name]="mostrarPasswords ? 'eye-off-outline' : 'eye-outline'"></ion-icon>
+          <span>{{ mostrarPasswords ? 'Ocultar' : 'Mostrar' }} contraseñas</span>
+        </div>
+
+        <ion-button
+          expand="block"
+          class="btn-guardar"
+          [disabled]="guardando"
+          (click)="cambiarPassword()">
+          <ion-icon name="lock-closed-outline" slot="start"></ion-icon>
+          Cambiar contraseña
+        </ion-button>
+
+      </div>
+
+      <!-- ══ CUENTA ═════════════════════════════════════════════ -->
+      <div class="seccion-titulo">
+        <ion-icon name="log-out-outline"></ion-icon>
+        Cuenta
+      </div>
+
+      <div class="config-card">
+
+        <ion-button
+          expand="block"
+          class="btn-logout"
+          (click)="cerrarSesion()">
+          <ion-icon name="log-out-outline" slot="start"></ion-icon>
+          Cerrar sesión
+        </ion-button>
+
+        <ion-button
+          expand="block"
+          class="btn-eliminar"
+          (click)="eliminarCuenta()">
+          <ion-icon name="trash-outline" slot="start"></ion-icon>
+          Eliminar mi cuenta
+        </ion-button>
+
+        <p class="aviso-eliminar">
+          Eliminar tu cuenta borra tus monedas, tu inventario y tu
+          historial de partidas. No se puede deshacer.
+        </p>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</ion-content>

@@ -30,11 +30,7 @@
 
         <!-- Nombre — modo edición -->
         <div class="nombre-edit-row" *ngIf="editando">
-          <ion-input
-            [(ngModel)]="nombreEditado"
-            class="input-nombre"
-            maxlength="100"
-            placeholder="Tu nombre">
+          <ion-input [(ngModel)]="nombreEditado" class="input-nombre" maxlength="100" placeholder="Tu nombre">
           </ion-input>
           <ion-icon name="checkmark-circle" class="btn-guardar" (click)="guardarNombre()"></ion-icon>
           <ion-icon name="close-circle" class="btn-cancelar" (click)="cancelarEdicion()"></ion-icon>
@@ -138,9 +134,7 @@
       </div>
 
       <div class="historial-lista" *ngIf="estadisticas?.historial?.length > 0">
-        <div
-          class="historial-item"
-          *ngFor="let partida of estadisticas.historial.slice(0, 5)"
+        <div class="historial-item" *ngFor="let partida of estadisticas.historial.slice(0, 5)"
           [class.item-victoria]="partida.HpResultado === 'VICTORIA'"
           [class.item-derrota]="partida.HpResultado === 'DERROTA'"
           [class.item-abandono]="partida.HpResultado === 'ABANDONO'">
@@ -162,11 +156,17 @@
         </div>
       </div>
 
+      <div class="btn-ranking" (click)="irAConfiguracion()">
+        <div class="ranking-icono">⚙️</div>
+        <div class="ranking-texto">
+          <strong>Configuración</strong>
+          <span>Datos, contraseña y preferencias</span>
+        </div>
+        <ion-icon name="chevron-forward"></ion-icon>
+      </div>
+
       <!-- ── Botón de cerrar sesión ────────────────────────────── -->
-      <ion-button
-        expand="block"
-        class="btn-logout"
-        (click)="cerrarSesion()">
+      <ion-button expand="block" class="btn-logout" (click)="cerrarSesion()">
         <ion-icon name="log-out-outline" slot="start"></ion-icon>
         Cerrar Sesión
       </ion-button>
