@@ -46,14 +46,19 @@ export class TableroPage implements OnInit, OnDestroy {
   girandoDado:    boolean = false;
   esperandoMover: boolean = false;
 
-  // El dado tiene que girar un mínimo de tiempo para que se vea.
-  // El Hub responde en ~30 ms, así que sin esto la animación de
-  // 450 ms se apagaba antes de completar media vuelta.
+  // El Hub responde en ~30 ms; sin este mínimo la animación de giro
+  // se apaga antes de completar media vuelta.
   private readonly DURACION_MIN_DADO = 750;
   private tsTiroDado: number = 0;
   private timerDado:  any    = null;
 
   fichasMovibles: number[] = [];
+
+  // ── Temporizador de turno (RF-03) ─────────────────────────────
+  segundosTurno:  number  = 0;
+  turnoCronometrado: boolean = false;
+  private readonly LIMITE_TURNO = 30;
+  private timerCuentaRegresiva: any = null;
 
   // ── Chat ──────────────────────────────────────────────────────
   mostrarChat:      boolean = false;
@@ -73,16 +78,11 @@ export class TableroPage implements OnInit, OnDestroy {
   filas    = Array.from({ length: 15 }, (_, i) => i + 1);
   columnas = Array.from({ length: 15 }, (_, i) => i + 1);
 
-  // ── Mapas precalculados ───────────────────────────────────────
   // El tablero es estático: sus 225 celdas se calculan una vez.
-  // Las fichas cambian, pero solo cuando llega un estado nuevo,
-  // no en cada ciclo de detección de cambios.
+  // Las fichas se reagrupan solo al llegar un estado nuevo.
   private mapaCeldas: Map<string, InfoCelda> = new Map();
   private mapaFichas: Map<string, any[]>     = new Map();
 
-  // ── Abandono ──────────────────────────────────────────────────
-  // Evita que un doble toque mande dos veces la solicitud, y sirve
-  // de red por si el servidor no confirma.
   private abandonoEnCurso: boolean = false;
   private timerAbandono:   any     = null;
 
@@ -106,9 +106,6 @@ export class TableroPage implements OnInit, OnDestroy {
   async ngOnInit(): Promise<void> {
     this.mapaCeldas = construirMapaCeldas();
 
-    // Autochequeo de la geometría del anillo. Solo en desarrollo:
-    // si algún día alguien toca las coordenadas, salta acá y no en
-    // la defensa del proyecto.
     const errores = validarAnillo();
     if (errores.length > 0) {
       console.error('Geometría del tablero inválida:', errores);
@@ -120,17 +117,6 @@ export class TableroPage implements OnInit, OnDestroy {
     const usuario = this.authService.getUsuario();
     this.usuId = usuario?.UsuId ?? 0;
 
-    // usuId solo se usa para abandonar. Si viene en 0 el resto del
-    // tablero funciona igual y el fallo pasa desapercibido hasta que
-    // alguien toca el botón de salir, así que conviene avisar ya.
-    if (this.usuId <= 0) {
-      console.warn(
-        'usuId no se pudo leer del usuario autenticado. ' +
-        'Se intentará resolver desde el estado de la partida.',
-        usuario
-      );
-    }
-
     if (this.parId <= 0 || this.jpId <= 0) {
       await this.mostrarToast('Error al entrar a la partida.', 'danger');
       this.router.navigate(['/home'], { replaceUrl: true });
@@ -141,8 +127,9 @@ export class TableroPage implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    if (this.timerDado)    clearTimeout(this.timerDado);
-    if (this.timerAbandono) clearTimeout(this.timerAbandono);
+    if (this.timerDado)           clearTimeout(this.timerDado);
+    if (this.timerAbandono)       clearTimeout(this.timerAbandono);
+    if (this.timerCuentaRegresiva) clearInterval(this.timerCuentaRegresiva);
     this.subs.forEach(s => s.unsubscribe());
   }
 
@@ -183,7 +170,25 @@ export class TableroPage implements OnInit, OnDestroy {
 
     this.subs.push(
       this.signalR.onPartidaFinalizada$.subscribe((resultado) => {
+        this.detenerCuentaRegresiva();
         this.mostrarVictoria(resultado);
+      })
+    );
+
+    // ── RF-03: arranca el reloj del turno ────────────────────
+    // El Hub manda esto cada vez que cambia el turno, con los
+    // segundos que realmente quedan. Quien se reconecta a mitad
+    // de turno recibe el remanente, no 30 de nuevo.
+    this.subs.push(
+      this.signalR.onTurnoIniciado$.subscribe((datos) => {
+        this.iniciarCuentaRegresiva(datos?.Segundos ?? this.LIMITE_TURNO);
+      })
+    );
+
+    this.subs.push(
+      this.signalR.onTurnoAutomatico$.subscribe((datos) => {
+        this.detenerCuentaRegresiva();
+        this.mostrarAviso(datos?.Mensaje ?? 'Se acabó el tiempo del turno');
       })
     );
 
@@ -222,13 +227,11 @@ export class TableroPage implements OnInit, OnDestroy {
       })
     );
 
-    // ── Confirmación de MI abandono ──────────────────────────
-    // El Hub manda esto con Clients.Caller. Sin escucharlo, el
-    // servidor confirmaba en el vacío y la pantalla no se movía.
     this.subs.push(
       this.signalR.onAbandonoConfirmado$.subscribe(async (datos) => {
         this.abandonoEnCurso = false;
         if (this.timerAbandono) clearTimeout(this.timerAbandono);
+        this.detenerCuentaRegresiva();
 
         const penalizacion = datos?.MonedasPenalizacion ?? datos?.Penalizacion;
         const mensaje = penalizacion
@@ -240,7 +243,6 @@ export class TableroPage implements OnInit, OnDestroy {
       })
     );
 
-    // ── Jugadores reemplazados por bot tras vencer los 60 seg ─
     this.subs.push(
       this.signalR.onJugadoresReemplazados$.subscribe((datos) => {
         this.mostrarAviso(datos?.mensaje ?? 'Un jugador fue reemplazado por un bot');
@@ -253,6 +255,47 @@ export class TableroPage implements OnInit, OnDestroy {
         await this.mostrarToast(mensaje, 'warning');
       })
     );
+  }
+
+  // ================================================================
+  // TEMPORIZADOR DE TURNO (RF-03)
+  // ================================================================
+  // El reloj real corre en el servidor: esto es solo el reflejo
+  // visual. Si llega a cero y el servidor todavía no resolvió, el
+  // contador se queda en 0 y no hace nada por su cuenta.
+  private iniciarCuentaRegresiva(segundos: number): void {
+    this.detenerCuentaRegresiva();
+
+    this.segundosTurno = Math.max(0, Math.min(segundos, this.LIMITE_TURNO));
+    this.turnoCronometrado = this.segundosTurno > 0;
+
+    if (!this.turnoCronometrado) return;
+
+    this.timerCuentaRegresiva = setInterval(() => {
+      this.segundosTurno--;
+
+      if (this.segundosTurno <= 0) {
+        this.segundosTurno = 0;
+        this.detenerCuentaRegresiva();
+      }
+    }, 1000);
+  }
+
+  private detenerCuentaRegresiva(): void {
+    if (this.timerCuentaRegresiva) {
+      clearInterval(this.timerCuentaRegresiva);
+      this.timerCuentaRegresiva = null;
+    }
+    this.turnoCronometrado = false;
+  }
+
+  // Porcentaje para la barra de tiempo del HTML
+  get porcentajeTiempo(): number {
+    return (this.segundosTurno / this.LIMITE_TURNO) * 100;
+  }
+
+  get tiempoCritico(): boolean {
+    return this.turnoCronometrado && this.segundosTurno <= 10;
   }
 
   // ================================================================
@@ -277,12 +320,10 @@ export class TableroPage implements OnInit, OnDestroy {
     this.reconstruirMapaFichas();
   }
 
-  // ── reconstruirMapaFichas ────────────────────────────────────
   // Agrupa las 16 fichas por celda una sola vez. El template pasa
-  // de hacer 225 filtrados por ciclo a 225 lookups O(1).
+  // de 225 filtrados por ciclo a 225 lookups O(1).
   private reconstruirMapaFichas(): void {
     const mapa = new Map<string, any[]>();
-
     const fichas = this.estado?.Fichas ?? [];
 
     for (const ficha of fichas) {
@@ -306,9 +347,6 @@ export class TableroPage implements OnInit, OnDestroy {
   private procesarDado(resultado: any): void {
     if (!resultado) return;
 
-    // Dejamos que el dado termine de girar antes de mostrar el
-    // resultado. Si el servidor tardó más que la animación, no
-    // esperamos nada extra.
     const transcurrido = Date.now() - this.tsTiroDado;
     const restante     = Math.max(0, this.DURACION_MIN_DADO - transcurrido);
 
@@ -323,8 +361,20 @@ export class TableroPage implements OnInit, OnDestroy {
       }
 
       if (resultado.SiguienteTurnoJpId === this.jpId && this.esMiTurno) {
-        this.dadoTirado = true;
+        // El orden importa: primero calculamos las jugadas y recién
+        // después decidimos si pedir que elija ficha.
+        //
+        // Antes dadoTirado se ponía en true ANTES de este cálculo, así
+        // que al sacar un 4 con todas las fichas en casa el banner
+        // pedía "Elegí una ficha" sin que hubiera ninguna clicable.
         this.calcularFichasMovibles();
+
+        if (this.fichasMovibles.length > 0) {
+          this.dadoTirado = true;
+        } else {
+          this.dadoTirado = false;
+          this.mostrarAviso(`Sacaste ${this.valorDado}: sin movimientos posibles`);
+        }
       } else {
         this.dadoTirado     = false;
         this.fichasMovibles = [];
@@ -336,7 +386,6 @@ export class TableroPage implements OnInit, OnDestroy {
     }, restante);
   }
 
-  // ── calcularFichasMovibles ───────────────────────────────────
   // Solo para resaltar visualmente. El servidor revalida cuando el
   // jugador elige, así que un cliente que mienta no gana nada.
   private calcularFichasMovibles(): void {
@@ -345,7 +394,7 @@ export class TableroPage implements OnInit, OnDestroy {
     for (const ficha of this.getMisFichas()) {
       if (ficha.Posicion >= POS_CORONADA) continue;
 
-      // En casa: solo sale con un 5
+      // De casa solo se sale con un 5
       if (ficha.Posicion === POS_CASA) {
         if (this.valorDado === 5) {
           this.fichasMovibles.push(ficha.NumeroFicha);
@@ -353,7 +402,7 @@ export class TableroPage implements OnInit, OnDestroy {
         continue;
       }
 
-      // En juego: hay que caer exacto en el centro, sin pasarse
+      // Hay que caer exacto en el centro
       if (ficha.Posicion + this.valorDado <= POS_CORONADA) {
         this.fichasMovibles.push(ficha.NumeroFicha);
       }
@@ -391,8 +440,7 @@ export class TableroPage implements OnInit, OnDestroy {
 
     await this.signalR.tirarDado(this.parId, this.jpId);
 
-    // Red de seguridad: si el servidor no contesta, el dado no
-    // queda girando para siempre.
+    // Si el servidor no contesta, el dado no queda girando para siempre
     setTimeout(() => {
       if (this.girandoDado && Date.now() - this.tsTiroDado >= 3000) {
         this.girandoDado = false;
@@ -412,10 +460,8 @@ export class TableroPage implements OnInit, OnDestroy {
     );
   }
 
-  // ── resolverUsuId ────────────────────────────────────────────
-  // El Hub identifica a quien abandona por usuId, no por jpId. Si
-  // el token no lo trajo, lo sacamos del estado de la partida, que
-  // ya tenemos en memoria y sabemos que es correcto.
+  // El Hub identifica a quien abandona por usuId. Si el token no lo
+  // trajo, lo sacamos del estado de la partida.
   private resolverUsuId(): number {
     if (this.usuId > 0) return this.usuId;
 
@@ -434,9 +480,6 @@ export class TableroPage implements OnInit, OnDestroy {
 
     const usuId = this.resolverUsuId();
 
-    // Sin un usuId válido el Hub no puede saber a quién penalizar.
-    // Antes esto fallaba en silencio: la solicitud salía con 0, el
-    // servidor no encontraba al jugador y no pasaba nada.
     if (usuId <= 0) {
       await this.mostrarToast(
         'No se pudo identificar tu usuario. Cerrá sesión y volvé a entrar.',
@@ -455,8 +498,6 @@ export class TableroPage implements OnInit, OnDestroy {
           text: 'Abandonar',
           cssClass: 'btn-peligro',
           handler: () => {
-            // No usamos async acá: devolvemos true para que el alert
-            // se cierre de inmediato y el envío sigue por su cuenta.
             this.confirmarAbandono(usuId);
             return true;
           }
@@ -467,10 +508,8 @@ export class TableroPage implements OnInit, OnDestroy {
     await alert.present();
   }
 
-  // ── confirmarAbandono ────────────────────────────────────────
-  // La navegación al home ocurre cuando llega AbandonoConfirmado.
-  // Si el servidor no contesta en 5 segundos, salimos igual: no
-  // tiene sentido dejar al jugador atrapado en la partida.
+  // La navegación ocurre cuando llega AbandonoConfirmado. Si el
+  // servidor no contesta en 5 segundos, salimos igual.
   private async confirmarAbandono(usuId: number): Promise<void> {
     this.abandonoEnCurso = true;
 
@@ -478,10 +517,7 @@ export class TableroPage implements OnInit, OnDestroy {
       if (!this.abandonoEnCurso) return;
 
       this.abandonoEnCurso = false;
-      await this.mostrarToast(
-        'El servidor no respondió. Volviendo al inicio.',
-        'warning'
-      );
+      await this.mostrarToast('El servidor no respondió. Volviendo al inicio.', 'warning');
       this.router.navigate(['/home'], { replaceUrl: true });
     }, 5000);
 
@@ -511,7 +547,7 @@ export class TableroPage implements OnInit, OnDestroy {
   }
 
   // ================================================================
-  // RENDERIZADO DEL TABLERO — todo O(1)
+  // RENDERIZADO DEL TABLERO
   // ================================================================
   getClaseCelda(fila: number, columna: number): string {
     return this.mapaCeldas.get(`${fila}-${columna}`)?.clases ?? 'celda-vacia';
@@ -525,9 +561,8 @@ export class TableroPage implements OnInit, OnDestroy {
     return this.mapaFichas.get(`${fila}-${columna}`) ?? [];
   }
 
-  // trackBy para que Angular no destruya y recree los divs de las
-  // fichas en cada render. Sin esto la transición CSS nunca corre,
-  // porque el elemento animado es siempre uno nuevo.
+  // Sin trackBy, Angular recrea los divs en cada render y la
+  // transición CSS nunca llega a correr.
   trackFicha(_indice: number, ficha: any): string {
     return `${ficha.JpId}-${ficha.NumeroFicha}`;
   }

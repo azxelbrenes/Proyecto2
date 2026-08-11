@@ -1,3 +1,8 @@
+// ================================================================
+// PALETA
+// ================================================================
+// Un solo lugar donde cambiar los colores del juego. Antes cada hex
+// estaba repetido en cuatro o cinco reglas distintas.
 $rojo:     #E53935;
 $azul:     #1E88E5;
 $verde:    #43A047;
@@ -411,6 +416,52 @@ $blanco-casilla: #FFFFFF;
     font-size: 0.72rem;
   }
 
+
+  // ── Cuenta regresiva del turno (RF-03) ─────────────────────────
+  // margin-left auto la empuja al extremo derecho del banner
+  .turno-tiempo {
+    margin-left:    auto;
+    display:        flex;
+    flex-direction: column;
+    align-items:    flex-end;
+    gap:            0.2rem;
+    flex-shrink:    0;
+
+    .tiempo-numero {
+      color:       $dorado-claro;
+      font-size:   0.95rem;
+      font-weight: 900;
+      line-height: 1;
+      // tabular-nums evita que el número "salte" al pasar de 10 a 9
+      font-variant-numeric: tabular-nums;
+    }
+
+    .tiempo-barra {
+      width:         52px;
+      height:        4px;
+      border-radius: 2px;
+      background:    rgba(255, 255, 255, 0.15);
+      overflow:      hidden;
+    }
+
+    .tiempo-relleno {
+      height:     100%;
+      background: $dorado;
+      // linear y no ease: el tiempo avanza a ritmo constante
+      transition: width 1s linear;
+    }
+
+    // Últimos 10 segundos
+    &.tiempo-critico {
+      .tiempo-numero {
+        color:     #FF8A80;
+        animation: pulsoTiempo 0.6s ease-in-out infinite;
+      }
+
+      .tiempo-relleno { background: $rojo; }
+    }
+  }
+
   &.turno-mio {
     background:   rgba(255, 195, 0, 0.16);
     border-color: rgba(255, 195, 0, 0.5);
@@ -742,6 +793,11 @@ $blanco-casilla: #FFFFFF;
   50%      { transform: scale(1.12); }
 }
 
+@keyframes pulsoTiempo {
+  0%, 100% { transform: scale(1);    }
+  50%      { transform: scale(1.15); }
+}
+
 @keyframes pulsoTurno {
   0%, 100% { box-shadow: 0 0 0 0  rgba(255, 195, 0, 0.4); }
   50%      { box-shadow: 0 0 0 5px rgba(255, 195, 0, 0);   }
@@ -775,6 +831,8 @@ $blanco-casilla: #FFFFFF;
   .dado-activo,
   .chip-indicador,
   .turno-banner,
+  .tiempo-numero,
+  .tiempo-relleno,
   .aviso-flotante,
   .chat-panel {
     animation:  none !important;

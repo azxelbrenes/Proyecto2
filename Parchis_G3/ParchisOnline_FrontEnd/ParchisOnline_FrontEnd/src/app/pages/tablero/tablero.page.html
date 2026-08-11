@@ -93,6 +93,21 @@
           </span>
         </div>
 
+        <!-- ── Cuenta regresiva de 30 segundos (RF-03) ────────── -->
+        <!-- El reloj real corre en el servidor; esto es el reflejo
+             visual. Los últimos 10 segundos se ponen en rojo. -->
+        <div
+          class="turno-tiempo"
+          *ngIf="turnoCronometrado"
+          [class.tiempo-critico]="tiempoCritico">
+
+          <span class="tiempo-numero">{{ segundosTurno }}</span>
+
+          <div class="tiempo-barra">
+            <div class="tiempo-relleno" [style.width.%]="porcentajeTiempo"></div>
+          </div>
+        </div>
+
       </div>
 
       <!-- ── Zona del dado ────────────────────────────────────── -->

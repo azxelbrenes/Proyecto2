@@ -50,7 +50,7 @@ public class JwtService
 
             // El token expira en 15 minutos
             // Si necesita más tiempo usás refresh tokens (se agrega después)
-            Expires = DateTime.UtcNow.AddMinutes(15),
+            Expires = DateTime.UtcNow.AddMinutes(30),
 
             // Firmamos con HMACSHA256 — algoritmo seguro y estándar
             SigningCredentials = new SigningCredentials(

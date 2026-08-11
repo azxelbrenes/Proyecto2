@@ -26,6 +26,15 @@ export class SignalRService {
   public onFichaMovida$         = new Subject<any>();
   public onPartidaFinalizada$   = new Subject<any>();
 
+  // ── Temporizador de turno (RF-03) ────────────────────────────
+  // TurnoIniciado llega cada vez que cambia el turno, con los
+  // segundos que realmente quedan: al reconectar a mitad de turno
+  // manda el remanente, no 30 de nuevo.
+  // TurnoAutomatico avisa que se venció el tiempo y el servidor
+  // jugó por el jugador.
+  public onTurnoIniciado$       = new Subject<any>();
+  public onTurnoAutomatico$     = new Subject<any>();
+
   // ── Eventos de chat ──────────────────────────────────────────
   public onMensajeRecibido$     = new Subject<any>();
   public onHistorialChat$       = new Subject<any>();
@@ -42,13 +51,12 @@ export class SignalRService {
 
   constructor(private authService: AuthService) {}
 
-  
+  // ================================================================
   // CONECTAR AL HUB
-
+  // ================================================================
   // Se llama una vez al entrar a la sala de espera o al tablero.
   // Si ya hay una conexión activa, no crea otra.
   public async conectar(): Promise<boolean> {
-    // Si ya estamos conectados, reutilizamos la conexión
     if (this.hubConnection?.state === signalR.HubConnectionState.Connected) {
       return true;
     }
@@ -59,13 +67,13 @@ export class SignalRService {
         // WebSockets no soportan headers personalizados
         accessTokenFactory: () => this.authService.getToken() ?? ''
       })
-      // Reintenta automáticamente si se cae la conexión:
-      // a los 0s, 2s, 5s y 10s. Si falla todo, avisa al componente.
+      // Reintenta automáticamente a los 0s, 2s, 5s y 10s.
+      // Si falla todo, avisa al componente.
       .withAutomaticReconnect([0, 2000, 5000, 10000])
       .configureLogging(signalR.LogLevel.Information)
       .build();
 
-    // Registramos todos los listeners ANTES de iniciar la conexión
+    // Los listeners se registran ANTES de iniciar la conexión
     this.registrarEventos();
 
     try {
@@ -80,9 +88,9 @@ export class SignalRService {
     }
   }
 
-  
-  // REGISTRAR LOS EVENTOS QUE MANDA EL BACKEND
-  
+  // ================================================================
+  // EVENTOS QUE MANDA EL BACKEND
+  // ================================================================
   // Cada .on() corresponde a un SendAsync() del PartidaHub.
   // Los nombres deben coincidir EXACTAMENTE con los del backend.
   private registrarEventos(): void {
@@ -103,6 +111,16 @@ export class SignalRService {
 
     this.hubConnection.on('PartidaFinalizada', (resultado) => {
       this.onPartidaFinalizada$.next(resultado);
+    });
+
+    // ── Temporizador de turno (RF-03) ────────────────────────
+    // Los manda TemporizadorTurnoService, no el Hub directamente.
+    this.hubConnection.on('TurnoIniciado', (datos) => {
+      this.onTurnoIniciado$.next(datos);
+    });
+
+    this.hubConnection.on('TurnoAutomatico', (datos) => {
+      this.onTurnoAutomatico$.next(datos);
     });
 
     // ── Chat ─────────────────────────────────────────────────
@@ -157,9 +175,9 @@ export class SignalRService {
     });
   }
 
-  
+  // ================================================================
   // MÉTODOS QUE LLAMAN AL BACKEND
- 
+  // ================================================================
   // Cada invoke() llama a un método público del PartidaHub.
   // Los nombres deben coincidir EXACTAMENTE.
 
@@ -201,16 +219,15 @@ export class SignalRService {
     await this.invocar('VerificarReconexiones', parId);
   }
 
-  
+  // ================================================================
   // HELPER — invocar con validación de conexión
-  
-  // Centraliza el manejo de errores: si la conexión se cayó,
-  // avisamos al componente en vez de que explote silenciosamente.
+  // ================================================================
+  // Si la conexión se cayó, avisamos al componente en vez de que
+  // la llamada explote en silencio.
   private async invocar(metodo: string, ...args: any[]): Promise<void> {
     if (this.hubConnection?.state !== signalR.HubConnectionState.Connected) {
       this.onError$.next('No hay conexión con el servidor. Reintentando...');
 
-      // Intentamos reconectar una vez antes de rendirnos
       const reconectado = await this.conectar();
       if (!reconectado) return;
     }
@@ -219,16 +236,16 @@ export class SignalRService {
       await this.hubConnection!.invoke(metodo, ...args);
     } catch (error) {
       console.error(`Error al invocar ${metodo}:`, error);
-      this.onError$.next(`Error al ejecutar la acción. Intentá de nuevo.`);
+      this.onError$.next('Error al ejecutar la acción. Intentá de nuevo.');
     }
   }
 
-  
+  // ================================================================
   // DESCONECTAR
-  
+  // ================================================================
   // Se llama al salir definitivamente del juego (logout, cerrar app).
-  // NO se llama al navegar entre pantallas — queremos mantener la
-  // conexión viva mientras el jugador esté en una partida.
+  // NO al navegar entre pantallas: la conexión se mantiene viva
+  // mientras el jugador esté en una partida.
   public async desconectar(): Promise<void> {
     if (this.hubConnection) {
       await this.hubConnection.stop();
@@ -237,7 +254,6 @@ export class SignalRService {
     }
   }
 
-  // Saber si estamos conectados en este momento
   public estaConectado(): boolean {
     return this.hubConnection?.state === signalR.HubConnectionState.Connected;
   }
