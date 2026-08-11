@@ -12,6 +12,7 @@ import {
   eyeOutline, eyeOffOutline, alertCircleOutline
 } from 'ionicons/icons';
 import { AuthService } from '../../services/auth';
+import { InactividadService } from '../../services/inactividad';
 
 @Component({
   selector: 'app-login',
@@ -29,17 +30,17 @@ export class LoginPage {
   // ── Variables del formulario ─────────────────────────────────
   correo:          string  = '';
   password:        string  = '';
-  mostrarPassword: boolean = false;  // Toggle ojo de contraseña
-  cargando:        boolean = false;  // Spinner mientras carga
-  errorMsg:        string  = '';     // Mensaje de error visible
+  mostrarPassword: boolean = false;
+  cargando:        boolean = false;
+  errorMsg:        string  = '';
 
   constructor(
     private authService:     AuthService,
+    private inactividad:     InactividadService,
     private router:          Router,
     private toastController: ToastController,
     private loadingCtrl:     LoadingController
   ) {
-    // Registramos los íconos que usamos en el HTML
     addIcons({
       mailOutline, lockClosedOutline,
       eyeOutline, eyeOffOutline, alertCircleOutline
@@ -47,18 +48,16 @@ export class LoginPage {
   }
 
   // ── togglePassword ───────────────────────────────────────────
-  // Muestra u oculta la contraseña al tocar el ícono del ojo
   togglePassword(): void {
     this.mostrarPassword = !this.mostrarPassword;
   }
 
   // ── iniciarSesion ────────────────────────────────────────────
-  // Valida el formulario y llama a la API de login
   async iniciarSesion(): Promise<void> {
-    // Limpiamos el error anterior
     this.errorMsg = '';
 
     // ── Validaciones del formulario ──────────────────────────
+    // Son solo para ahorrar un request: el servidor valida igual.
     if (!this.correo.trim()) {
       this.errorMsg = 'El correo electrónico es requerido.';
       return;
@@ -69,7 +68,6 @@ export class LoginPage {
       return;
     }
 
-    // Validación básica de formato de correo
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(this.correo)) {
       this.errorMsg = 'El formato del correo no es válido.';
@@ -78,12 +76,15 @@ export class LoginPage {
 
     this.cargando = true;
 
-    // ── Llamada a la API ─────────────────────────────────────
     this.authService.login(this.correo, this.password).subscribe({
       next: async (respuesta) => {
         this.cargando = false;
 
-        // Login exitoso — mostramos toast y navegamos al home
+        // RF-20: arranca el reloj de los 30 minutos de inactividad.
+        // Tiene que ser acá y no en AppComponent: el ngOnInit de la
+        // app ya corrió antes de que existiera la sesión.
+        this.inactividad.iniciar();
+
         const toast = await this.toastController.create({
           message:  `¡Bienvenido, ${respuesta.usuario.UsuNombre}! 🎲`,
           duration: 2000,
@@ -92,27 +93,29 @@ export class LoginPage {
         });
         await toast.present();
 
-        // Navegamos al home y limpiamos el historial
-        // para que el usuario no pueda volver al login con el botón atrás
+        // replaceUrl para que el botón atrás no vuelva al login
         this.router.navigate(['/home'], { replaceUrl: true });
       },
       error: (error) => {
         this.cargando = false;
 
-        // Manejamos los diferentes tipos de error de la API
         if (error.status === 401) {
           this.errorMsg = 'Correo o contraseña incorrectos.';
         } else if (error.status === 0) {
           this.errorMsg = 'No se puede conectar con el servidor. Verificá tu conexión.';
+        } else if (error.status === 429) {
+          // Rate limiting: 5 intentos por minuto por IP
+          this.errorMsg = 'Demasiados intentos. Esperá un momento e intentá de nuevo.';
         } else {
-          this.errorMsg = error.error?.mensaje ?? 'Ocurrió un error. Intentá de nuevo.';
+          this.errorMsg = error.error?.strMensajeRespuesta
+                       ?? error.error?.mensaje
+                       ?? 'Ocurrió un error. Intentá de nuevo.';
         }
       }
     });
   }
 
   // ── irARegistro ──────────────────────────────────────────────
-  // Navega a la pantalla de registro
   irARegistro(): void {
     this.router.navigate(['/registro']);
   }

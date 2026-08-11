@@ -241,6 +241,19 @@ export class PerfilPage implements OnInit {
     await toast.present();
   }
 
+  // ── getAvatar ────────────────────────────────────────────────
+  // Traduce el número guardado en UsuAvatar al emoji que le toca.
+  // El HTML tenía el 🎮 escrito a mano, así que el avatar se guardaba
+  // bien en la BD pero el perfil siempre mostraba el mismo.
+  //
+  // Este array está duplicado en configuracion.page.html. Con más
+  // tiempo iría a un archivo compartido.
+  getAvatar(): string {
+    const emojis = ['🎮', '🎲', '👑', '🚀', '🐉', '⭐'];
+    const indice = (this.usuario?.UsuAvatar ?? 1) - 1;
+    return emojis[indice] ?? '🎮';
+  }
+
   // ── Navegación ───────────────────────────────────────────────
   irARanking(): void {
     this.router.navigate(['/ranking']);
