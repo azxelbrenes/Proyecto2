@@ -51,6 +51,14 @@
             <!-- Corona en el centro exacto -->
             <span class="centro-corona" *ngIf="fila === 8 && columna === 8">👑</span>
 
+            <!-- Mensaje flotante del chat (RF-09) -->
+            <div
+              class="burbuja-chat"
+              *ngIf="getMensajeFlotante(fila, columna) as texto"
+              [ngClass]="'burbuja-' + getColorMensajeFlotante(fila, columna)">
+              {{ texto }}
+            </div>
+
             <!-- Fichas que están en esta celda -->
             <div class="fichas-celda">
               <div

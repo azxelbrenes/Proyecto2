@@ -75,6 +75,11 @@ export class TableroPage implements OnInit, OnDestroy {
 
   aviso: string | null = null;
 
+  // ── Mensajes flotantes sobre las fichas (RF-09) ───────────────
+  // jpId -> texto del mensaje. Se limpia solo a los 3 segundos.
+  mensajesFlotantes: Map<number, string> = new Map();
+  private timersFlotantes: Map<number, any> = new Map();
+
   filas    = Array.from({ length: 15 }, (_, i) => i + 1);
   columnas = Array.from({ length: 15 }, (_, i) => i + 1);
 
@@ -130,6 +135,10 @@ export class TableroPage implements OnInit, OnDestroy {
     if (this.timerDado)           clearTimeout(this.timerDado);
     if (this.timerAbandono)       clearTimeout(this.timerAbandono);
     if (this.timerCuentaRegresiva) clearInterval(this.timerCuentaRegresiva);
+
+    this.timersFlotantes.forEach(t => clearTimeout(t));
+    this.timersFlotantes.clear();
+
     this.subs.forEach(s => s.unsubscribe());
   }
 
@@ -195,6 +204,11 @@ export class TableroPage implements OnInit, OnDestroy {
     this.subs.push(
       this.signalR.onMensajeRecibido$.subscribe((mensaje) => {
         this.mensajes.push(mensaje);
+
+        // RF-09: el mensaje aparece 3 segundos sobre la ficha de quien
+        // lo mandó, además de quedar en el historial del chat.
+        this.mostrarMensajeFlotante(mensaje);
+
         if (!this.mostrarChat) {
           this.mensajesNoLeidos++;
         }
@@ -544,6 +558,62 @@ export class TableroPage implements OnInit, OnDestroy {
 
     await this.signalR.enviarMensaje(this.parId, this.jpId, texto, false);
     this.mensajeTexto = '';
+  }
+
+  // ── mostrarMensajeFlotante (RF-09) ───────────────────────────
+  // La burbuja dura 3 segundos. Si el mismo jugador manda otro antes
+  // de que expire, se reinicia el reloj en vez de acumular dos
+  // timeouts peleando por la misma clave.
+  private mostrarMensajeFlotante(mensaje: any): void {
+    const jpId  = mensaje?.JpId;
+    const texto = mensaje?.Contenido;
+
+    if (!jpId || !texto) return;
+
+    const anterior = this.timersFlotantes.get(jpId);
+    if (anterior) clearTimeout(anterior);
+
+    // Se reasigna el Map completo para que Angular detecte el cambio:
+    // mutar un Map no dispara la detección por sí solo.
+    this.mensajesFlotantes = new Map(this.mensajesFlotantes).set(jpId, texto);
+
+    const timer = setTimeout(() => {
+      const copia = new Map(this.mensajesFlotantes);
+      copia.delete(jpId);
+      this.mensajesFlotantes = copia;
+      this.timersFlotantes.delete(jpId);
+    }, 3000);
+
+    this.timersFlotantes.set(jpId, timer);
+  }
+
+  // ── getMensajeFlotante ───────────────────────────────────────
+  // Devuelve el mensaje activo de la primera ficha que haya en la
+  // celda, o null. El template lo usa para decidir si dibuja burbuja.
+  getMensajeFlotante(fila: number, columna: number): string | null {
+    if (this.mensajesFlotantes.size === 0) return null;
+
+    const fichas = this.getFichasEnCelda(fila, columna);
+
+    for (const ficha of fichas) {
+      const texto = this.mensajesFlotantes.get(ficha.JpId);
+      if (texto) return texto;
+    }
+
+    return null;
+  }
+
+  // Color de quien manda el mensaje, para teñir la burbuja
+  getColorMensajeFlotante(fila: number, columna: number): string {
+    const fichas = this.getFichasEnCelda(fila, columna);
+
+    for (const ficha of fichas) {
+      if (this.mensajesFlotantes.has(ficha.JpId)) {
+        return (ficha.Color ?? 'azul').toLowerCase();
+      }
+    }
+
+    return 'azul';
   }
 
   // ================================================================
