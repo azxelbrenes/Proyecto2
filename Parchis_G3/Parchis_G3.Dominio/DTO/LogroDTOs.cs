@@ -1,8 +1,6 @@
 ﻿namespace Parchis_G3.Dominio.DTO;
 
 /// <summary>
-/// RF-05: un logro del jugador.
-///
 /// Los logros no tienen tabla propia: se derivan del historial de
 /// partidas y de las transacciones, que ya se guardan. Evita una
 /// migración y garantiza que nunca queden desincronizados con los

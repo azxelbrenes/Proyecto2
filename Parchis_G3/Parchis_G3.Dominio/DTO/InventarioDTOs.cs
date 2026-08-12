@@ -1,8 +1,6 @@
 ﻿namespace Parchis_G3.Dominio.DTO;
 
-// ================================================================
-// INVENTARIO
-// ================================================================
+
 
 // Un artículo que el usuario ya desbloqueó
 public class ArticuloInventarioDTO
@@ -34,9 +32,8 @@ public class EquiparRequest
     public int ArtId { get; set; }
 }
 
-// ================================================================
+
 // RANKING
-// ================================================================
 
 // Una fila del ranking global
 public class RankingJugadorDTO
@@ -63,9 +60,7 @@ public class RankingDTO
     public int TotalJugadores { get; set; }
 }
 
-// ================================================================
 // RECOMPENSA DIARIA
-// ================================================================
 
 // Estado actual de la racha del usuario
 public class EstadoRecompensaDTO
