@@ -10,7 +10,7 @@ import { AuthService } from './auth';
 export class InactividadService {
 
   private readonly MINUTOS_LIMITE = 30;
- private readonly MINUTOS_AVISO  = 2;
+ private readonly MINUTOS_AVISO  = 1;
 
   private temporizador: any = null;
   private temporizadorAviso: any = null;
