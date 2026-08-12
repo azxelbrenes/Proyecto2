@@ -46,9 +46,6 @@ public class AuthController : ControllerBase
         return HttpContext.Connection.RemoteIpAddress?.ToString();
     }
 
-    // ================================================================
-    // POST /api/auth/registro
-    // ================================================================
     // EnableRateLimiting("registro") limita a 3 registros por hora
     // por IP — evita que un bot cree miles de cuentas.
     [HttpPost("registro")]
@@ -108,7 +105,6 @@ public class AuthController : ControllerBase
         }
     }
 
-    // ================================================================
     // POST /api/auth/login
   
     // EnableRateLimiting("login") limita a 5 intentos por minuto

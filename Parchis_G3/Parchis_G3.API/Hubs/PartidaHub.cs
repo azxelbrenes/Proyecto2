@@ -15,7 +15,7 @@ public class PartidaHub : Hub
     private readonly IUnidadTrabajoEF _unidadTrabajo;
     private readonly IMapper _mapper;
 
-    // RF-03: el reloj de 30 segundos y los turnos de bots viven acá.
+   
     // El bucle de bots estaba duplicado dentro del Hub; ahora hay una
     // sola implementación que usan tanto el Hub como el temporizador.
     private readonly TemporizadorTurnoService _temporizador;
@@ -42,9 +42,9 @@ public class PartidaHub : Hub
 
     private static string GrupoPartida(int parId) => $"partida-{parId}";
 
-    // ================================================================
+   
     // UNIRSE A LA PARTIDA
-    // ================================================================
+    
     public async Task UnirseAPartida(int parId, int jpId)
     {
         await Groups.AddToGroupAsync(Context.ConnectionId, GrupoPartida(parId));
@@ -79,18 +79,17 @@ public class PartidaHub : Hub
         _temporizador.IniciarTurno(parId);
     }
 
-    // ================================================================
+  
     // SALIR DE LA PARTIDA (salida normal, no desconexión)
-    // ================================================================
+ 
     public async Task SalirDePartida(int parId)
     {
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, GrupoPartida(parId));
         _conexiones.TryRemove(Context.ConnectionId, out _);
     }
 
-    // ================================================================
+    
     // TIRAR DADO
-    // ================================================================
     public async Task TirarDado(int parId, int jpId)
     {
         // El jugador actuó: paramos el reloj antes de nada
@@ -120,9 +119,8 @@ public class PartidaHub : Hub
         _temporizador.IniciarTurno(parId);
     }
 
-    // ================================================================
+   
     // MOVER FICHA
-    // ================================================================
     public async Task MoverFicha(int parId, int jpId, int numeroFicha, int valorDado)
     {
         _temporizador.Detener(parId);
@@ -149,9 +147,8 @@ public class PartidaHub : Hub
         _temporizador.IniciarTurno(parId);
     }
 
-    // ================================================================
-    // ENVIAR MENSAJE DE CHAT (RF-09)
-    // ================================================================
+   
+    // ENVIAR MENSAJE DE CHAT 
     public async Task EnviarMensaje(int parId, int jpId, string contenido, bool esPredefinido)
     {
         var resultado = _chatLN.EnviarMensaje(parId, jpId, contenido, esPredefinido, _unidadTrabajo);
@@ -166,9 +163,8 @@ public class PartidaHub : Hub
             .SendAsync("MensajeRecibido", resultado.ValorRetorno);
     }
 
-    // ================================================================
-    // ABANDONAR PARTIDA (RF-14)
-    // ================================================================
+   
+    // ABANDONAR PARTIDA 
     public async Task AbandonarPartida(int parId, int usuId)
     {
         var resultado = _abandonoLN.AbandonarPartida(usuId, parId, _unidadTrabajo, _mapper);
@@ -198,9 +194,8 @@ public class PartidaHub : Hub
         _temporizador.IniciarTurno(parId);
     }
 
-    // ================================================================
-    // DESCONEXIÓN AUTOMÁTICA (RF-13)
-    // ================================================================
+  
+    // DESCONEXIÓN AUTOMÁTICA
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         if (_conexiones.TryRemove(Context.ConnectionId, out var datos))
@@ -222,9 +217,8 @@ public class PartidaHub : Hub
         await base.OnDisconnectedAsync(exception);
     }
 
-    // ================================================================
-    // VERIFICAR RECONEXIONES VENCIDAS (RF-13)
-    // ================================================================
+   
+    // VERIFICAR RECONEXIONES VENCIDAS
     public async Task VerificarReconexiones(int parId)
     {
         var resultado = _abandonoLN.VerificarDesconexionesVencidas(parId, _unidadTrabajo, _mapper);

@@ -49,11 +49,6 @@ public partial class ParchisOnlineContext : DbContext
 
     public virtual DbSet<UsuarioArticulo> UsuarioArticulos { get; set; }
 
-    // NOTA: se quitó el OnConfiguring con la cadena hardcodeada.
-    // La conexión ahora viene únicamente de appsettings.json a través
-    // de Program.cs (AddDbContext), que es la práctica correcta.
-    // Dejar la cadena aquí duplicaba la configuración y exponía
-    // las credenciales en el código fuente.
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -355,15 +350,7 @@ public partial class ParchisOnlineContext : DbContext
             entity.Property(e => e.SalPremioBase).HasColumnName("Sal_PremioBase");
         });
 
-        // ================================================================
-        // NUEVO: SegLogs — auditoría de eventos de seguridad
-        // ================================================================
-        // Registra cada login, intento fallido y bloqueo de cuenta con
-        // su IP y timestamp. Permite investigar incidentes de seguridad.
-        //
-        // Usu_ID es NULLABLE a propósito: si alguien intenta entrar con
-        // un correo que no existe, igual queremos registrar el intento
-        // (eso detecta ataques de enumeración de usuarios).
+      
         modelBuilder.Entity<SegLog>(entity =>
         {
             entity.HasKey(e => e.LogId).HasName("PK_SegLogs");
@@ -563,15 +550,10 @@ public partial class ParchisOnlineContext : DbContext
                 .HasColumnType("datetime")
                 .HasColumnName("Usu_FechaDesbloqueo");
 
-            // ── NUEVO: control de intentos fallidos de login ──────
-            // Cuántas veces seguidas erró la contraseña. Al llegar a 5
-            // la cuenta se bloquea 15 minutos (SeguridadLN).
             entity.Property(e => e.UsuIntentosFallidos)
                 .HasDefaultValue(0)
                 .HasColumnName("Usu_IntentosFallidos");
 
-            // Momento del último intento fallido. Sirve para resetear
-            // el contador si pasaron más de 30 minutos sin intentar.
             entity.Property(e => e.UsuFechaUltimoIntento)
                 .HasColumnType("datetime")
                 .HasColumnName("Usu_FechaUltimoIntento");

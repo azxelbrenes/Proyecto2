@@ -177,9 +177,9 @@ public class ArticuloController : ControllerBase
     }
 }
 
-// ================================================================
+
 // DTO de compra
-// ================================================================
+
 // Solo recibe el ID del artículo. El nombre, el precio y el estado
 // los busca el servidor en la base de datos.
 //

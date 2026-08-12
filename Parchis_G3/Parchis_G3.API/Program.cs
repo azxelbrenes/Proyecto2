@@ -21,20 +21,13 @@ builder.Services.AddDbContext<ParchisOnlineContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
 
-// ================================================================
-// AUTOMAPPER
-// ================================================================
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
-// ================================================================
-// ACCESO A DATOS (Scoped)
-// ================================================================
+
 // Scoped es obligatorio para EF Core: el DbContext no es thread-safe.
 builder.Services.AddScoped<IUnidadTrabajoEF, UnidadTrabajoEF>();
 
-// ================================================================
-// LÓGICA DE NEGOCIOS (Scoped)
-// ================================================================
+
 builder.Services.AddScoped<IUsuarioLN, UsuarioLN>();
 builder.Services.AddScoped<ISalaLN, SalaLN>();
 builder.Services.AddScoped<IArticuloLN, ArticuloLN>();
@@ -54,7 +47,6 @@ builder.Services.AddScoped<IInventarioLN, InventarioLN>();
 builder.Services.AddScoped<IRankingLN, RankingLN>();
 builder.Services.AddScoped<IRecompensaLN, RecompensaLN>();
 builder.Services.AddScoped<ILogroLN, LogroLN>();
-// RF-03: reloj de 30 segundos por turno y bucle de turnos de bots
 builder.Services.AddSingleton<TemporizadorTurnoService>();
 
 // -- Seguridad (Scoped) --
@@ -64,16 +56,13 @@ builder.Services.AddSingleton<TemporizadorTurnoService>();
 // a todos los atacantes.
 builder.Services.AddScoped<ISeguridadLN, SeguridadLN>();
 
-// ================================================================
-// PAGOS CON PAYPAL
-// ================================================================
+
 // AddHttpClient registra el servicio con manejo correcto del pool
 // de conexiones (evita agotamiento de sockets).
 builder.Services.AddHttpClient<IPagoLN, PagoLN>();
 
-// ================================================================
 // SERVICIOS SINGLETON
-// ================================================================
+
 
 // JwtService es stateless — una instancia basta para toda la app.
 builder.Services.AddSingleton<JwtService>();
@@ -102,9 +91,8 @@ builder.Services.AddSingleton<IChatLN, ChatLN>();
 // Mantiene el temporizador de 60 segundos de cada desconectado.
 builder.Services.AddSingleton<IAbandonoLN, AbandonoLN>();
 
-// ================================================================
+
 // SIGNALR
-// ================================================================
 // IMPORTANTE: SignalR tiene su PROPIO serializador, independiente
 // del de los controllers. Configurar AddControllers().AddJsonOptions
 // no afecta al Hub.
@@ -120,9 +108,8 @@ builder.Services.AddSignalR()
         options.PayloadSerializerOptions.PropertyNamingPolicy = null;
     });
 
-// ================================================================
+
 // RATE LIMITING — protección contra fuerza bruta y abuso
-// ================================================================
 // ¿QUÉ HACE?
 // Limita cuántos requests puede hacer una IP en un período.
 // Sin esto, un bot puede probar 10,000 contraseñas por minuto.
@@ -191,9 +178,8 @@ builder.Services.AddRateLimiter(options =>
     };
 });
 
-// ================================================================
+
 // AUTENTICACIÓN JWT
-// ================================================================
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("JWT Key no configurada en appsettings.");
 
@@ -240,9 +226,6 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// ================================================================
-// CORS
-// ================================================================
 // SignalR NO funciona con AllowAnyOrigin() porque necesita
 // AllowCredentials(), y ambos son incompatibles.
 builder.Services.AddCors(options =>
@@ -262,9 +245,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-// ================================================================
 // CONTROLLERS Y SWAGGER
-// ================================================================
 // PropertyNamingPolicy = null mantiene PascalCase en el JSON,
 // que es lo que espera el frontend Ionic.
 // Ojo: esto SOLO aplica a los controllers. El Hub de SignalR se
@@ -280,9 +261,9 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// ================================================================
+
 // MIDDLEWARES (el orden importa)
-// ================================================================
+
 
 if (app.Environment.IsDevelopment())
 {
