@@ -30,6 +30,13 @@ public class JugadorPartidaDTO
     public bool EsBot { get; set; }
     public string Color { get; set; } = string.Empty;
     public bool EsGanador { get; set; }
+
+    // RF-06: la ficha comprada en la tienda se ve en el tablero.
+    // Va el nombre del artículo y no su ID porque el frontend elige
+    // el estilo por nombre, igual que hace la tienda y el perfil.
+    public string? FichaEquipada { get; set; }
+    public string? TableroEquipado { get; set; }
+    public string? DadoEquipado { get; set; }
 }
 
 // Resultado de un turno completo: qué pasó al tirar el dado y mover
