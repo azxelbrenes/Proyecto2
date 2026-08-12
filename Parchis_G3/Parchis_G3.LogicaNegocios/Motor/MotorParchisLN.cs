@@ -33,6 +33,9 @@ public class MotorParchisLN : IMotorParchisLN
     private const int TIPO_DADO = 3;
 
     // ── Reglas de turno (RF-03) ──────────────────────────────────
+    // Casillas de premio al comer una ficha rival
+    private const int BONUS_CAPTURA = 15;
+
     private const int DADO_TURNO_EXTRA = 6;
     private const int MAX_TURNOS_CONSECUTIVOS = 3;
     public const int SEGUNDOS_LIMITE_TURNO = 30;
@@ -140,7 +143,7 @@ public class MotorParchisLN : IMotorParchisLN
                 var fichasActuales = unidadTrabajo.TEstadoFicha
                     .Buscar(f => f.ParId == parId && f.JpId == jpId).ValorRetorno?.ToList() ?? new();
 
-                if (ObtenerJugadasPosibles(fichasActuales, dadoColgado).Any())
+                if (ObtenerJugadasPosibles(parId, jpId, fichasActuales, dadoColgado, unidadTrabajo).Any())
                     return Respuesta<ResultadoTurnoDTO>.Validacion("Ya tiraste el dado. Elegí una ficha.");
 
                 _dadoPendiente.TryRemove(jpId, out _);
@@ -207,7 +210,7 @@ public class MotorParchisLN : IMotorParchisLN
         }
 
         var fichas = unidadTrabajo.TEstadoFicha.Buscar(f => f.JpId == jpId).ValorRetorno?.ToList() ?? new();
-        bool puedeMover = ObtenerJugadasPosibles(fichas, valorDado).Any();
+        bool puedeMover = ObtenerJugadasPosibles(parId, jpId, fichas, valorDado, unidadTrabajo).Any();
 
         var resultado = new ResultadoTurnoDTO
         {
@@ -317,8 +320,17 @@ public class MotorParchisLN : IMotorParchisLN
         if (nuevaPosicion == null)
             return Respuesta<ResultadoTurnoDTO>.Validacion("Movimiento inválido: hay que caer exacto, y de casa solo se sale con un 5.");
 
+        // ── Barrera en el camino ─────────────────────────────────
+        // Dos fichas del mismo color forman una barrera que nadie
+        // atraviesa, ni siquiera su dueño. Antes solo se miraba la
+        // casilla destino, así que las fichas saltaban los bloqueos.
+        if (HayBarreraEnCamino(parId, colorJugador, posicionAnterior, nuevaPosicion.Value, unidadTrabajo))
+            return Respuesta<ResultadoTurnoDTO>.Validacion("Hay un bloqueo en el camino: no podés pasar.");
+
         bool huboCaptura = false;
         bool fichaCoronada = nuevaPosicion == META;
+        int posicionFinal = nuevaPosicion.Value;
+        int bonusAplicado = 0;
 
         // Capturas y bloqueos solo aplican en el anillo compartido
         if (nuevaPosicion >= POS_ANILLO_MIN && nuevaPosicion <= POS_ANILLO_MAX)
@@ -326,49 +338,53 @@ public class MotorParchisLN : IMotorParchisLN
             int casillaAnillo = IndiceAnillo(colorJugador, nuevaPosicion.Value);
 
             // ── Salir de casa desaloja la propia casilla de salida ──
-            // Regla clásica: al sacar ficha con un 5, cualquier rival
-            // parado en tu casilla de salida se va a casa, aunque sea
-            // casilla segura. Es la única excepción a la protección.
+            // Al sacar ficha con un 5, cualquier rival parado en tu
+            // salida se va a casa aunque sea casilla segura. Es la
+            // única excepción a la protección de los seguros.
             if (posicionAnterior == POS_CASA && esCasillaDeSalidaPropia(colorJugador, casillaAnillo))
             {
                 if (DesalojarRivales(parId, jpId, casillaAnillo, unidadTrabajo))
                     huboCaptura = true;
             }
 
-            if (!CasillasSeguras.Contains(casillaAnillo))
+            int captura = ResolverCaptura(parId, jpId, colorJugador, nuevaPosicion.Value, unidadTrabajo);
+
+            if (captura == -1)
+                return Respuesta<ResultadoTurnoDTO>.Validacion("Esa casilla está bloqueada por el rival.");
+
+            if (captura == 1)
+                huboCaptura = true;
+        }
+
+        // ── Premio de 15 casillas por comer ──────────────────────
+        // Solo se aplica si el tramo completo es legal: no puede
+        // pasarse de la meta ni atravesar una barrera. Si no cabe, la
+        // ficha se queda donde capturó en vez de perder el turno.
+        //
+        // El premio puede comer otra ficha al aterrizar, pero eso no
+        // genera un segundo premio: evita cadenas infinitas.
+        if (huboCaptura && !fichaCoronada)
+        {
+            int destinoBonus = posicionFinal + BONUS_CAPTURA;
+
+            bool caminoLibre = destinoBonus <= META
+                && !HayBarreraEnCamino(parId, colorJugador, posicionFinal, destinoBonus, unidadTrabajo);
+
+            if (caminoLibre)
             {
-                var todasLasFichas = unidadTrabajo.TEstadoFicha.Buscar(f => f.ParId == parId).ValorRetorno!.ToList();
-                var jugadoresPartida = unidadTrabajo.TJugadoresPartida.Buscar(j => j.ParId == parId).ValorRetorno!.ToList();
+                int capturaBonus = ResolverCaptura(parId, jpId, colorJugador, destinoBonus, unidadTrabajo);
 
-                var fichasEnCasilla = todasLasFichas
-                    .Where(f => f.JpId != jpId
-                             && f.EfPosicion >= POS_ANILLO_MIN
-                             && f.EfPosicion <= POS_ANILLO_MAX)
-                    .Where(f =>
-                    {
-                        var colorRival = jugadoresPartida.FirstOrDefault(j => j.JpId == f.JpId)?.JpColorFicha;
-                        if (colorRival == null || !OffsetColor.ContainsKey(colorRival)) return false;
-                        return IndiceAnillo(colorRival, f.EfPosicion) == casillaAnillo;
-                    })
-                    .GroupBy(f => f.JpId)
-                    .ToList();
-
-                // Dos fichas del mismo rival forman bloqueo: no se puede aterrizar
-                if (fichasEnCasilla.Any(grupo => grupo.Count() >= 2))
-                    return Respuesta<ResultadoTurnoDTO>.Validacion("Esa casilla está bloqueada por el rival.");
-
-                foreach (var fichaRival in fichasEnCasilla.SelectMany(g => g))
+                // -1 significa barrera rival en el destino: sin premio
+                if (capturaBonus != -1)
                 {
-                    fichaRival.EfPosicion = POS_CASA;
-                    fichaRival.EfEstadoFicha = "EN_CASA";
-                    fichaRival.EfUltimaActualizacion = DateTime.Now;
-                    unidadTrabajo.TEstadoFicha.Modificar(fichaRival);
-                    huboCaptura = true;
+                    posicionFinal = destinoBonus;
+                    bonusAplicado = BONUS_CAPTURA;
+                    fichaCoronada = posicionFinal == META;
                 }
             }
         }
 
-        ficha.EfPosicion = nuevaPosicion.Value;
+        ficha.EfPosicion = posicionFinal;
         ficha.EfEstadoFicha = fichaCoronada ? "CORONADA" : "EN_JUEGO";
         ficha.EfUltimaActualizacion = DateTime.Now;
         unidadTrabajo.TEstadoFicha.Modificar(ficha);
@@ -383,7 +399,7 @@ public class MotorParchisLN : IMotorParchisLN
             TurResultadoDado = valorDado,
             TurFichaMovida = numeroFicha,
             TurPosicionAnterior = posicionAnterior,
-            TurPosicionNueva = nuevaPosicion,
+            TurPosicionNueva = posicionFinal,
             TurFueAutomatico = esAutomatico,
             TurHuboCaptura = huboCaptura,
             TurFecha = DateTime.Now
@@ -399,8 +415,12 @@ public class MotorParchisLN : IMotorParchisLN
             TurnoExtra = false
         };
 
+        if (bonusAplicado > 0)
+            resultado.Mensaje = $"¡Captura! Avanzás {bonusAplicado} casillas de premio.";
+
         if (esAutomatico)
-            resultado.Mensaje = "Se acabó el tiempo. El sistema movió por vos.";
+            resultado.Mensaje = "Se acabó el tiempo. El sistema movió por vos."
+                + (bonusAplicado > 0 ? $" ¡Capturó y avanzó {bonusAplicado} casillas!" : "");
 
         // ── ¿Ganó? ───────────────────────────────────────────────
         var fichasDelJugador = unidadTrabajo.TEstadoFicha
@@ -492,7 +512,7 @@ public class MotorParchisLN : IMotorParchisLN
             var fichas = unidadTrabajo.TEstadoFicha
                 .Buscar(f => f.ParId == parId && f.JpId == jpId).ValorRetorno!.ToList();
 
-            var jugadas = ObtenerJugadasPosibles(fichas, valorDado);
+            var jugadas = ObtenerJugadasPosibles(parId, jpId, fichas, valorDado, unidadTrabajo);
 
             if (!jugadas.Any())
             {
@@ -657,21 +677,150 @@ public class MotorParchisLN : IMotorParchisLN
         return nueva;
     }
 
-    // Devuelve los números de ficha que se pueden mover con este dado
-    private List<int> ObtenerJugadasPosibles(List<EstadoFicha> fichas, int dado)
+    // Devuelve los números de ficha que se pueden mover con este dado.
+    //
+    // Una jugada tapada por una barrera no cuenta como posible: si no,
+    // el turno quedaría trabado pidiendo un movimiento que el propio
+    // servidor va a rechazar después.
+    private List<int> ObtenerJugadasPosibles(int parId, int jpId, List<EstadoFicha> fichas, int dado, IUnidadTrabajoEF unidadTrabajo)
     {
         var jugadas = new List<int>();
+
+        var colorJugador = unidadTrabajo.TJugadoresPartida
+            .ObtenerEntidad(j => j.JpId == jpId).ValorRetorno?.JpColorFicha;
+
+        bool revisarBarreras = colorJugador != null && OffsetColor.ContainsKey(colorJugador);
 
         foreach (var ficha in fichas)
         {
             if (ficha.EfEstadoFicha == "CORONADA") continue;
 
-            if (CalcularNuevaPosicion(ficha.EfPosicion, dado) != null)
-                jugadas.Add(ficha.EfNumeroFicha);
+            int? destino = CalcularNuevaPosicion(ficha.EfPosicion, dado);
+            if (destino == null) continue;
+
+            if (revisarBarreras &&
+                HayBarreraEnCamino(parId, colorJugador!, ficha.EfPosicion, destino.Value, unidadTrabajo))
+                continue;
+
+            jugadas.Add(ficha.EfNumeroFicha);
         }
 
         return jugadas;
     }
+
+    // ── ObtenerBarreras ──────────────────────────────────────────
+    // Casillas físicas del anillo ocupadas por 2 o más fichas de un
+    // mismo jugador. Son barreras: nadie las atraviesa.
+    private HashSet<int> ObtenerBarreras(int parId, IUnidadTrabajoEF unidadTrabajo)
+    {
+        var barreras = new HashSet<int>();
+
+        var fichas = unidadTrabajo.TEstadoFicha
+            .Buscar(f => f.ParId == parId).ValorRetorno?.ToList() ?? new List<EstadoFicha>();
+
+        var jugadores = unidadTrabajo.TJugadoresPartida
+            .Buscar(j => j.ParId == parId).ValorRetorno?.ToList() ?? new List<JugadoresPartidum>();
+
+        var conteo = new Dictionary<(int jpId, int celda), int>();
+
+        foreach (var f in fichas)
+        {
+            if (f.EfPosicion < POS_ANILLO_MIN || f.EfPosicion > POS_ANILLO_MAX) continue;
+
+            var color = jugadores.FirstOrDefault(j => j.JpId == f.JpId)?.JpColorFicha;
+            if (color == null || !OffsetColor.ContainsKey(color)) continue;
+
+            var clave = (f.JpId, IndiceAnillo(color, f.EfPosicion));
+            conteo[clave] = conteo.TryGetValue(clave, out int n) ? n + 1 : 1;
+        }
+
+        foreach (var par in conteo)
+        {
+            if (par.Value >= 2) barreras.Add(par.Key.celda);
+        }
+
+        return barreras;
+    }
+
+    // ── HayBarreraEnCamino ───────────────────────────────────────
+    // Revisa las casillas intermedias entre origen y destino. Excluye
+    // la de origen (la ficha ya está ahí) y la de destino, que se
+    // valida aparte: sobre las fichas propias sí se puede apilar.
+    private bool HayBarreraEnCamino(int parId, string colorJugador, int posicionOrigen, int posicionDestino, IUnidadTrabajoEF unidadTrabajo)
+    {
+        int desde = Math.Max(posicionOrigen + 1, POS_ANILLO_MIN);
+        int hasta = Math.Min(posicionDestino, POS_ANILLO_MAX);
+
+        if (desde > hasta) return false;
+
+        var barreras = ObtenerBarreras(parId, unidadTrabajo);
+        if (barreras.Count == 0) return false;
+
+        for (int pos = desde; pos <= hasta; pos++)
+        {
+            if (pos == posicionDestino) continue;
+
+            if (barreras.Contains(IndiceAnillo(colorJugador, pos)))
+                return true;
+        }
+
+        return false;
+    }
+
+    // ── ResolverCaptura ──────────────────────────────────────────
+    // Manda a casa a las fichas rivales que estén solas en esa
+    // casilla. Devuelve 1 si capturó, 0 si no había nada que comer,
+    // y -1 si la casilla tiene una barrera rival y no se puede pisar.
+    private int ResolverCaptura(int parId, int jpId, string colorJugador, int posicionRelativa, IUnidadTrabajoEF unidadTrabajo)
+    {
+        if (posicionRelativa < POS_ANILLO_MIN || posicionRelativa > POS_ANILLO_MAX)
+            return 0;
+
+        int casillaAnillo = IndiceAnillo(colorJugador, posicionRelativa);
+
+        var todasLasFichas = unidadTrabajo.TEstadoFicha
+            .Buscar(f => f.ParId == parId).ValorRetorno?.ToList() ?? new List<EstadoFicha>();
+
+        var jugadoresPartida = unidadTrabajo.TJugadoresPartida
+            .Buscar(j => j.ParId == parId).ValorRetorno?.ToList() ?? new List<JugadoresPartidum>();
+
+        var fichasEnCasilla = todasLasFichas
+            .Where(f => f.JpId != jpId
+                     && f.EfPosicion >= POS_ANILLO_MIN
+                     && f.EfPosicion <= POS_ANILLO_MAX)
+            .Where(f =>
+            {
+                var colorRival = jugadoresPartida.FirstOrDefault(j => j.JpId == f.JpId)?.JpColorFicha;
+                if (colorRival == null || !OffsetColor.ContainsKey(colorRival)) return false;
+                return IndiceAnillo(colorRival, f.EfPosicion) == casillaAnillo;
+            })
+            .GroupBy(f => f.JpId)
+            .ToList();
+
+        // La barrera se revisa antes que el seguro: dos fichas juntas
+        // bloquean incluso en una casilla con estrella.
+        if (fichasEnCasilla.Any(grupo => grupo.Count() >= 2))
+            return -1;
+
+        // En casilla segura hay rivales pero no se los puede comer
+        if (CasillasSeguras.Contains(casillaAnillo))
+            return 0;
+
+        bool capturo = false;
+
+        foreach (var fichaRival in fichasEnCasilla.SelectMany(g => g))
+        {
+            fichaRival.EfPosicion = POS_CASA;
+            fichaRival.EfEstadoFicha = "EN_CASA";
+            fichaRival.EfUltimaActualizacion = DateTime.Now;
+            unidadTrabajo.TEstadoFicha.Modificar(fichaRival);
+            capturo = true;
+        }
+
+        return capturo ? 1 : 0;
+    }
+
+    // ── ObtenerBarreras / fin ────────────────────────────────────
 
     private int SiguienteJugador(int parId, int jpIdActual, IUnidadTrabajoEF unidadTrabajo)
     {

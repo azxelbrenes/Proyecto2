@@ -104,24 +104,38 @@ public class BotServiceLN : IBotServiceLN
             if (resultadoDado.ValorRetorno.SiguienteTurnoJpId != jpIdBot)
                 return resultadoDado;
 
-            // ── PASO 2: Elegir la mejor ficha para mover ─────────
-            int? mejorFicha = ElegirMejorFicha(parId, jpIdBot, valorDado, unidadTrabajo);
+            // ── PASO 2: Ordenar las fichas por conveniencia ──────
+            var candidatas = OrdenarFichasPorPuntaje(parId, jpIdBot, valorDado, unidadTrabajo);
 
-            if (mejorFicha == null)
+            if (!candidatas.Any())
                 return resultadoDado;
 
             // ── PASO 3: Ejecutar el movimiento ───────────────────
-            var resultadoMovimiento = _motor.MoverFicha(
-                parId, jpIdBot, mejorFicha.Value, valorDado, unidadTrabajo, mapper
-            );
+            // Se prueban en orden de preferencia. El motor puede
+            // rechazar una jugada por una barrera en el camino, cosa
+            // que el bot no evalúa: sin este reintento, el turno se
+            // quedaba trabado y la partida no seguía.
+            Respuesta<ResultadoTurnoDTO>? ultimoIntento = null;
 
-            if (resultadoMovimiento.blnIndicadorTransaccion)
+            foreach (var numeroFicha in candidatas)
             {
-                resultadoMovimiento.ValorRetorno!.Mensaje =
-                    $"El bot sacó {valorDado} y movió la ficha {mejorFicha.Value}.";
+                var intento = _motor.MoverFicha(
+                    parId, jpIdBot, numeroFicha, valorDado, unidadTrabajo, mapper
+                );
+
+                if (intento.blnIndicadorTransaccion)
+                {
+                    intento.ValorRetorno!.Mensaje =
+                        $"El bot sacó {valorDado} y movió la ficha {numeroFicha}.";
+                    return intento;
+                }
+
+                ultimoIntento = intento;
             }
 
-            return resultadoMovimiento;
+            // Ninguna jugada resultó válida: devolvemos la tirada para
+            // que el Hub siga el flujo normal en vez de cortar.
+            return resultadoDado;
         }
         catch (Exception ex)
         {
@@ -134,7 +148,7 @@ public class BotServiceLN : IBotServiceLN
     // ================================================================
     // Evalúa cada ficha del bot, simula moverla con el dado actual,
     // le asigna un puntaje, y devuelve el número de la mejor ficha.
-    private int? ElegirMejorFicha(int parId, int jpIdBot, int valorDado, IUnidadTrabajoEF unidadTrabajo)
+    private List<int> OrdenarFichasPorPuntaje(int parId, int jpIdBot, int valorDado, IUnidadTrabajoEF unidadTrabajo)
     {
         var fichasBot = unidadTrabajo.TEstadoFicha
             .Buscar(f => f.ParId == parId && f.JpId == jpIdBot)
@@ -155,8 +169,7 @@ public class BotServiceLN : IBotServiceLN
         if (!OffsetColor.ContainsKey(colorBot))
             colorBot = "AZUL";
 
-        int? mejorFicha = null;
-        int mejorPuntaje = int.MinValue;
+        var evaluadas = new List<(int NumeroFicha, int Puntaje)>();
 
         foreach (var ficha in fichasBot)
         {
@@ -174,14 +187,14 @@ public class BotServiceLN : IBotServiceLN
             // rechazaría el movimiento, así que ni lo consideramos
             if (puntaje < 0) continue;
 
-            if (puntaje > mejorPuntaje)
-            {
-                mejorPuntaje = puntaje;
-                mejorFicha = ficha.EfNumeroFicha;
-            }
+            evaluadas.Add((ficha.EfNumeroFicha, puntaje));
         }
 
-        return mejorFicha;
+        // De mejor a peor, para poder reintentar si la primera falla
+        return evaluadas
+            .OrderByDescending(e => e.Puntaje)
+            .Select(e => e.NumeroFicha)
+            .ToList();
     }
 
     // ── Simula el movimiento sin ejecutarlo ─────────────────────────
