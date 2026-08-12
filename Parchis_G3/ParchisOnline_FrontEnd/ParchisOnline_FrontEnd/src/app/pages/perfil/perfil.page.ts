@@ -279,4 +279,7 @@ export class PerfilPage implements OnInit {
   irATutorial(): void {
   this.router.navigate(['/tutorial'], { queryParams: { desdeMenu: 'true' } });
 }
+irALogros(): void {
+  this.router.navigate(['/logros']);
+}
 }

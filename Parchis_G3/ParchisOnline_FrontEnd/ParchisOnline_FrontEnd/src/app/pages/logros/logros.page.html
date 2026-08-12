@@ -1,0 +1,99 @@
+<ion-content class="logros-content" [fullscreen]="true">
+
+  <div class="logros-container">
+
+    <!-- ── Header ─────────────────────────────────────────────── -->
+    <div class="header-bar">
+      <ion-icon name="arrow-back" class="btn-volver" (click)="volver()"></ion-icon>
+      <div class="header-titulo">
+        <ion-icon name="medal-outline" class="titulo-icon"></ion-icon>
+        <span>Logros</span>
+      </div>
+    </div>
+
+    <!-- ── Loading ────────────────────────────────────────────── -->
+    <div class="loading-logros" *ngIf="cargando">
+      <ion-spinner name="crescent" color="warning"></ion-spinner>
+      <p>Cargando logros...</p>
+    </div>
+
+    <div *ngIf="!cargando && resumen">
+
+      <!-- ── Resumen ──────────────────────────────────────────── -->
+      <div class="resumen-card">
+        <div class="resumen-numero">
+          {{ resumen.Desbloqueados }}<span class="resumen-total">/{{ resumen.TotalLogros }}</span>
+        </div>
+        <div class="resumen-label">logros desbloqueados</div>
+
+        <div class="resumen-barra">
+          <div
+            class="resumen-relleno"
+            [style.width.%]="(resumen.Desbloqueados / resumen.TotalLogros) * 100">
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Botón de reclamar ────────────────────────────────── -->
+      <ion-button
+        *ngIf="hayPendientes"
+        expand="block"
+        class="btn-reclamar"
+        [disabled]="reclamando"
+        (click)="reclamar()">
+        <ion-icon name="logo-bitcoin" slot="start"></ion-icon>
+        Reclamar {{ resumen.RecompensaPendiente | number }} monedas
+      </ion-button>
+
+      <!-- ── Lista de logros ──────────────────────────────────── -->
+      <div class="logros-lista">
+        <div
+          class="logro-card"
+          *ngFor="let logro of resumen.Logros"
+          [class.logro-desbloqueado]="logro.Desbloqueado"
+          [class.logro-reclamado]="logro.Reclamado">
+
+          <div class="logro-icono">
+            <span *ngIf="logro.Desbloqueado">{{ logro.Icono }}</span>
+            <ion-icon name="lock-closed" *ngIf="!logro.Desbloqueado"></ion-icon>
+          </div>
+
+          <div class="logro-info">
+            <div class="logro-cabecera">
+              <span class="logro-nombre">{{ logro.Nombre }}</span>
+              <ion-icon
+                name="checkmark-circle"
+                class="logro-check"
+                *ngIf="logro.Reclamado">
+              </ion-icon>
+            </div>
+
+            <div class="logro-desc">{{ logro.Descripcion }}</div>
+
+            <!-- Barra de progreso, solo si todavía no está completo -->
+            <div class="logro-progreso" *ngIf="!logro.Desbloqueado">
+              <div class="progreso-track">
+                <div
+                  class="progreso-fill"
+                  [style.width.%]="logro.PorcentajeProgreso">
+                </div>
+              </div>
+              <span class="progreso-texto">
+                {{ logro.ProgresoActual | number }} / {{ logro.ProgresoMeta | number }}
+              </span>
+            </div>
+
+            <div class="logro-recompensa" *ngIf="logro.Desbloqueado && !logro.Reclamado">
+              <ion-icon name="logo-bitcoin"></ion-icon>
+              +{{ logro.Recompensa | number }} monedas por reclamar
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</ion-content>

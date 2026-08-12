@@ -1,0 +1,243 @@
+$dorado:       #FFC300;
+$dorado-claro: #FFDD55;
+$fondo-oscuro: #1C1230;
+
+.logros-content {
+  --background: radial-gradient(circle at top, #2D1B4E 0%, #1C1230 45%, #0D0818 100%);
+}
+
+.logros-container {
+  max-width: 520px;
+  margin:    0 auto;
+  padding:   1rem 1rem 3rem;
+}
+
+// ── Header ───────────────────────────────────────────────────────
+.header-bar {
+  display:       flex;
+  align-items:   center;
+  gap:           0.8rem;
+  margin-bottom: 1.4rem;
+  padding-top:   0.5rem;
+
+  .btn-volver {
+    color:         rgba(255, 255, 255, 0.75);
+    font-size:     1.5rem;
+    cursor:        pointer;
+    padding:       0.3rem;
+    border-radius: 8px;
+
+    &:active { background: rgba(255, 255, 255, 0.1); }
+  }
+
+  .header-titulo {
+    display:     flex;
+    align-items: center;
+    gap:         0.5rem;
+    color:       white;
+    font-size:   1.25rem;
+    font-weight: 800;
+  }
+
+  .titulo-icon {
+    color:     $dorado;
+    font-size: 1.4rem;
+  }
+}
+
+.loading-logros {
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  justify-content: center;
+  padding:         4rem 0;
+  color:           rgba(255, 255, 255, 0.6);
+
+  p { margin-top: 1rem; font-size: 0.9rem; }
+}
+
+// ── Resumen ──────────────────────────────────────────────────────
+.resumen-card {
+  background:    linear-gradient(135deg, rgba(255, 195, 0, 0.14), rgba(255, 195, 0, 0.05));
+  border:        1px solid rgba(255, 195, 0, 0.3);
+  border-radius: 16px;
+  padding:       1.3rem;
+  text-align:    center;
+  margin-bottom: 1rem;
+}
+
+.resumen-numero {
+  color:       $dorado-claro;
+  font-size:   2.2rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.resumen-total {
+  color:     rgba(255, 255, 255, 0.35);
+  font-size: 1.3rem;
+}
+
+.resumen-label {
+  color:      rgba(255, 255, 255, 0.55);
+  font-size:  0.78rem;
+  margin-top: 0.3rem;
+}
+
+.resumen-barra {
+  height:        6px;
+  border-radius: 3px;
+  background:    rgba(255, 255, 255, 0.12);
+  overflow:      hidden;
+  margin-top:    1rem;
+}
+
+.resumen-relleno {
+  height:     100%;
+  background: linear-gradient(90deg, $dorado, $dorado-claro);
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+// ── Botón de reclamar ────────────────────────────────────────────
+.btn-reclamar {
+  --background:    linear-gradient(135deg, #{$dorado}, #E0A80E);
+  --color:         #{$fondo-oscuro};
+  --border-radius: 12px;
+  font-weight:     800;
+  font-size:       0.88rem;
+  margin-bottom:   1.3rem;
+  animation:       latirReclamar 1.8s ease-in-out infinite;
+}
+
+// ── Lista de logros ──────────────────────────────────────────────
+.logros-lista {
+  display:        flex;
+  flex-direction: column;
+  gap:            0.7rem;
+}
+
+.logro-card {
+  display:       flex;
+  align-items:   flex-start;
+  gap:           0.9rem;
+  background:    rgba(255, 255, 255, 0.04);
+  border:        1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding:       0.9rem;
+  transition:    all 0.25s ease;
+
+  // Los bloqueados se ven apagados para que el contraste con los
+  // conseguidos sea inmediato
+  opacity: 0.55;
+
+  &.logro-desbloqueado {
+    opacity:      1;
+    background:   rgba(255, 195, 0, 0.09);
+    border-color: rgba(255, 195, 0, 0.35);
+  }
+
+  &.logro-reclamado {
+    background:   rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+}
+
+.logro-icono {
+  width:           46px;
+  height:          46px;
+  flex-shrink:     0;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  font-size:       1.5rem;
+  background:      rgba(255, 255, 255, 0.06);
+  border-radius:   12px;
+
+  ion-icon {
+    color:     rgba(255, 255, 255, 0.3);
+    font-size: 1.2rem;
+  }
+}
+
+.logro-desbloqueado .logro-icono {
+  background: rgba(255, 195, 0, 0.18);
+}
+
+.logro-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.logro-cabecera {
+  display:     flex;
+  align-items: center;
+  gap:         0.4rem;
+}
+
+.logro-nombre {
+  color:       white;
+  font-size:   0.92rem;
+  font-weight: 800;
+}
+
+.logro-check {
+  color:     #66BB6A;
+  font-size: 1rem;
+}
+
+.logro-desc {
+  color:      rgba(255, 255, 255, 0.5);
+  font-size:  0.75rem;
+  margin-top: 0.15rem;
+}
+
+// ── Progreso ─────────────────────────────────────────────────────
+.logro-progreso {
+  display:     flex;
+  align-items: center;
+  gap:         0.6rem;
+  margin-top:  0.55rem;
+}
+
+.progreso-track {
+  flex:          1;
+  height:        5px;
+  border-radius: 3px;
+  background:    rgba(255, 255, 255, 0.1);
+  overflow:      hidden;
+}
+
+.progreso-fill {
+  height:     100%;
+  background: rgba(255, 195, 0, 0.7);
+  transition: width 0.4s ease;
+}
+
+.progreso-texto {
+  color:       rgba(255, 255, 255, 0.4);
+  font-size:   0.68rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.logro-recompensa {
+  display:     flex;
+  align-items: center;
+  gap:         0.3rem;
+  color:       $dorado-claro;
+  font-size:   0.72rem;
+  font-weight: 700;
+  margin-top:  0.5rem;
+
+  ion-icon { font-size: 0.85rem; }
+}
+
+@keyframes latirReclamar {
+  0%, 100% { transform: scale(1);     }
+  50%      { transform: scale(1.02);  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-reclamar { animation: none !important; }
+}
