@@ -5,12 +5,14 @@ using Parchis_G3.Dominio.EntidadesTipadas;
 using Parchis_G3.Dominio.InterfacesAD;
 using Parchis_G3.Dominio.InterfacesLN;
 using Parchis_G3.Utilitarios;
+using System;
+using System.Linq.Expressions;
 
 namespace Parchis_G3.LogicaNegocios.Implementaciones;
 
 public class UsuarioLN : IUsuarioLN
 {
-  
+
     // IUnidadTrabajoEF: acceso a todos los repositorios de la BD
     // IMapper: convierte entre Usuario (entidad EF) y TUsuario (tipada)
     // ILogger: registra errores en la consola/logs del servidor
@@ -204,8 +206,21 @@ public class UsuarioLN : IUsuarioLN
     }
 
     // Eliminar
-    // Elimina (o desactiva) un usuario del sistema.
-    // Primero verificamos que exista antes de intentar eliminar.
+    // Elimina la cuenta del usuario y TODOS sus datos relacionados.
+    //
+    // 7 tablas apuntan a Usuarios por llave foránea (Usu_ID) y ninguna
+    // tiene ON DELETE CASCADE en la base de datos, así que SQL Server
+    // rechaza el DELETE de Usuarios mientras quede algo apuntándole.
+    // Por eso hay que borrar primero, a mano, todo lo que depende del
+    // usuario, en el orden correcto, y recién al final borrar su fila.
+    //
+    // Todo corre dentro de una transacción: si un paso falla, no queda
+    // el borrado a medias (por ejemplo, artículos borrados pero la
+    // cuenta todavía viva).
+    //
+    // Los SegLogs NO se borran: se les quita la referencia al usuario
+    // (Usu_ID = NULL) para conservar la bitácora de seguridad aunque
+    // la cuenta ya no exista.
     public Respuesta<bool> Eliminar(TUsuario Usuario)
     {
         try
@@ -220,18 +235,74 @@ public class UsuarioLN : IUsuarioLN
             if (!existe.blnIndicadorTransaccion)
                 return Respuesta<bool>.Validacion("El usuario no existe.");
 
-            var eliminar = _unidadTrabajo.TUsuario.Eliminar(existe.ValorRetorno!);
+            _unidadTrabajo.EmpezarTransaccion();
 
+            // 1) Partidas jugadas por el usuario: primero lo que depende
+            //    de cada JugadoresPartida (fichas, turnos, chat), luego
+            //    la fila de JugadoresPartida en sí.
+            var jugadas = _unidadTrabajo.TJugadoresPartida
+                .Buscar(jp => jp.UsuId == Usuario.UsuId);
+
+            if (!jugadas.blnIndicadorTransaccion)
+                throw new Exception(jugadas.strMensajeRespuesta);
+
+            foreach (var jp in jugadas.ValorRetorno!)
+            {
+                BorrarTodos(_unidadTrabajo.TEstadoFicha, f => f.JpId == jp.JpId);
+                BorrarTodos(_unidadTrabajo.TTurnoPartida, t => t.JpId == jp.JpId);
+                BorrarTodos(_unidadTrabajo.TMensajesChat, m => m.JpId == jp.JpId);
+                _unidadTrabajo.TJugadoresPartida.Eliminar(jp);
+            }
+
+            // 2) Tablas que dependen directamente del usuario
+            BorrarTodos(_unidadTrabajo.TUsuarioArticulo, ua => ua.UsuId == Usuario.UsuId);
+            BorrarTodos(_unidadTrabajo.TEquipamientoActivo, e => e.UsuId == Usuario.UsuId);
+            BorrarTodos(_unidadTrabajo.TTransaccion, t => t.UsuId == Usuario.UsuId);
+            BorrarTodos(_unidadTrabajo.THistorialPartida, h => h.UsuId == Usuario.UsuId);
+            BorrarTodos(_unidadTrabajo.TFilaEspera, f => f.UsuId == Usuario.UsuId);
+            BorrarTodos(_unidadTrabajo.TSesionesActiva, s => s.UsuId == Usuario.UsuId);
+
+            // 3) Bitácora de seguridad: se conserva, solo se desvincula
+            //    del usuario (Usu_ID admite NULL para este caso).
+            var logs = _unidadTrabajo.TSegLog.Buscar(l => l.UsuId == Usuario.UsuId);
+            if (!logs.blnIndicadorTransaccion)
+                throw new Exception(logs.strMensajeRespuesta);
+
+            foreach (var log in logs.ValorRetorno!)
+            {
+                log.UsuId = null;
+                _unidadTrabajo.TSegLog.Modificar(log);
+            }
+
+            // 4) Por último, el usuario
+            var eliminar = _unidadTrabajo.TUsuario.Eliminar(existe.ValorRetorno!);
             if (!eliminar.blnIndicadorTransaccion)
-                return Respuesta<bool>.Error(eliminar.strMensajeRespuesta);
+                throw new Exception(eliminar.strMensajeRespuesta);
 
             _unidadTrabajo.Completar();
+            _unidadTrabajo.CompletarTran();
+
             return Respuesta<bool>.Exito(true, "Usuario eliminado exitosamente.");
         }
         catch (Exception ex)
         {
+            _unidadTrabajo.Rollback();
             _logger.LogError(ex, "Error en UsuarioLN.Eliminar");
             return Respuesta<bool>.Error(ex.Message);
         }
+    }
+
+    // Busca todos los registros de un repositorio que cumplan la
+    // condición dada y los marca para borrar. Se usa para las tablas
+    // hijas de Usuarios que no tienen, a su vez, tablas dependientes
+    // propias (a diferencia de JugadoresPartida).
+    private void BorrarTodos<T>(IRepositorioAD<T> repo, Expression<Func<T, bool>> condicion) where T : class
+    {
+        var resultado = repo.Buscar(condicion);
+        if (!resultado.blnIndicadorTransaccion)
+            throw new Exception(resultado.strMensajeRespuesta);
+
+        foreach (var item in resultado.ValorRetorno!)
+            repo.Eliminar(item);
     }
 }
