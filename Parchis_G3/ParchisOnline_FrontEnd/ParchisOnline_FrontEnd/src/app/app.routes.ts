@@ -78,6 +78,7 @@ export const routes: Routes = [
     
   {
     path: 'logros',
+     canActivate: [authGuard],
     loadComponent: () => import('./pages/logros/logros.page').then( m => m.LogrosPage)
   }
 ];
