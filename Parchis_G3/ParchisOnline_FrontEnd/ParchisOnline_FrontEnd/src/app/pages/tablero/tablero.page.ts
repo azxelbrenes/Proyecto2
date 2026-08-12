@@ -724,6 +724,62 @@ export class TableroPage implements OnInit, OnDestroy {
     return this.mapaFichas.get(`${fila}-${columna}`) ?? [];
   }
 
+  // ── getEstiloFicha (RF-06) ───────────────────────────────────
+  // Traduce el nombre del artículo equipado a una clase CSS. Es la
+  // misma lógica que usan la tienda y el perfil, así la ficha se ve
+  // igual en las tres pantallas.
+  getEstiloFicha(ficha: any): string {
+    const jugador = this.getJugadores().find((j: any) => j.JpId === ficha.JpId);
+    const nombre  = (jugador?.FichaEquipada ?? '').toLowerCase();
+
+    if (!nombre) return 'estilo-clasico';
+
+    if (nombre.includes('dorad'))                             return 'estilo-dorado';
+    if (nombre.includes('cristal'))                           return 'estilo-cristal';
+    if (nombre.includes('neón')  || nombre.includes('neon'))  return 'estilo-neon';
+    if (nombre.includes('diamante'))                          return 'estilo-diamante';
+    if (nombre.includes('madera'))                            return 'estilo-madera';
+    if (nombre.includes('galaxia'))                           return 'estilo-galaxia';
+
+    return 'estilo-clasico';
+  }
+
+  // ── getEstiloTablero (RF-06) ─────────────────────────────────
+  // El tablero es uno solo y compartido, así que se usa el del
+  // jugador local: cada uno ve el suyo.
+  getEstiloTablero(): string {
+    const yo     = this.getJugadores().find((j: any) => j.JpId === this.jpId);
+    const nombre = (yo?.TableroEquipado ?? '').toLowerCase();
+
+    if (!nombre) return 'tablero-clasico';
+
+    if (nombre.includes('dorad'))                             return 'tablero-dorado';
+    if (nombre.includes('cristal'))                           return 'tablero-cristal';
+    if (nombre.includes('neón')  || nombre.includes('neon'))  return 'tablero-neon';
+    if (nombre.includes('diamante'))                          return 'tablero-diamante';
+    if (nombre.includes('madera'))                            return 'tablero-madera';
+    if (nombre.includes('galaxia'))                           return 'tablero-galaxia';
+
+    return 'tablero-clasico';
+  }
+
+  // ── getEstiloDado (RF-06) ────────────────────────────────────
+  getEstiloDado(): string {
+    const yo     = this.getJugadores().find((j: any) => j.JpId === this.jpId);
+    const nombre = (yo?.DadoEquipado ?? '').toLowerCase();
+
+    if (!nombre) return 'dado-clasico';
+
+    if (nombre.includes('dorad'))                             return 'dado-dorado';
+    if (nombre.includes('cristal'))                           return 'dado-cristal';
+    if (nombre.includes('neón')  || nombre.includes('neon'))  return 'dado-neon';
+    if (nombre.includes('diamante'))                          return 'dado-diamante';
+    if (nombre.includes('madera'))                            return 'dado-madera';
+    if (nombre.includes('galaxia'))                           return 'dado-galaxia';
+
+    return 'dado-clasico';
+  }
+
   // Sin trackBy, Angular recrea los divs en cada render y la
   // transición CSS nunca llega a correr.
   trackFicha(_indice: number, ficha: any): string {

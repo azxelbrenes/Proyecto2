@@ -906,6 +906,136 @@ $blanco-casilla: #FFFFFF;
   z-index:   12;
 }
 
+
+// ================================================================
+// ARTÍCULOS EQUIPADOS (RF-06)
+// ================================================================
+// Los estilos comprados en la tienda se aplican sobre el aspecto
+// base, no lo reemplazan: la ficha conserva su color de jugador y
+// el artículo agrega brillo, borde o textura encima. Si se cambiara
+// el fondo entero se perdería de quién es cada ficha.
+
+// ── Fichas ───────────────────────────────────────────────────────
+.estilo-clasico {
+  // El aspecto por defecto ya está en .ficha
+}
+
+.estilo-dorado {
+  border-color: #FFD700;
+  box-shadow:   0 0 8px rgba(255, 215, 0, 0.85),
+                0 2px 4px rgba(0, 0, 0, 0.6),
+                inset 0 -2px 3px rgba(0, 0, 0, 0.35);
+}
+
+.estilo-cristal {
+  opacity:                 0.82;
+  border-color:            rgba(255, 255, 255, 0.98);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter:         blur(2px);
+  box-shadow:              0 0 7px rgba(255, 255, 255, 0.75),
+                           inset 0 2px 5px rgba(255, 255, 255, 0.65);
+}
+
+.estilo-neon {
+  border-color: #00E5FF;
+  box-shadow:   0 0 6px #00E5FF,
+                0 0 14px rgba(0, 229, 255, 0.65),
+                inset 0 -2px 3px rgba(0, 0, 0, 0.35);
+  animation:    pulsoNeon 1.6s ease-in-out infinite;
+}
+
+.estilo-diamante {
+  border-color: #E1F5FE;
+  box-shadow:   0 0 10px rgba(179, 229, 252, 0.95),
+                0 0 20px rgba(129, 212, 250, 0.55),
+                inset 0 2px 4px rgba(255, 255, 255, 0.85);
+}
+
+.estilo-madera {
+  border-color: #8D6E63;
+  box-shadow:   0 2px 5px rgba(0, 0, 0, 0.7),
+                inset 0 -2px 4px rgba(62, 39, 35, 0.65);
+}
+
+.estilo-galaxia {
+  border-color: #B388FF;
+  box-shadow:   0 0 9px rgba(179, 136, 255, 0.9),
+                0 0 18px rgba(124, 77, 255, 0.5),
+                inset 0 -2px 3px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes pulsoNeon {
+  0%, 100% { filter: brightness(1);    }
+  50%      { filter: brightness(1.35); }
+}
+
+// ── Marco del tablero ────────────────────────────────────────────
+// Solo cambia el marco de madera, nunca las casillas: tocar los
+// colores del recorrido rompería la legibilidad del juego.
+.tablero-dorado {
+  background:   #6B4E12;
+  border-color: #C9A227;
+  box-shadow:   0 8px 28px rgba(0, 0, 0, 0.6),
+                0 0 22px rgba(255, 215, 0, 0.35),
+                inset 0 0 0 2px rgba(255, 215, 0, 0.4);
+}
+
+.tablero-cristal {
+  background:   #37474F;
+  border-color: #B0BEC5;
+  box-shadow:   0 8px 28px rgba(0, 0, 0, 0.6),
+                inset 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+
+.tablero-neon {
+  background:   #12123A;
+  border-color: #00E5FF;
+  box-shadow:   0 8px 28px rgba(0, 0, 0, 0.6),
+                0 0 26px rgba(0, 229, 255, 0.45),
+                inset 0 0 0 2px rgba(0, 229, 255, 0.55);
+}
+
+.tablero-diamante {
+  background:   #1A3A4A;
+  border-color: #81D4FA;
+  box-shadow:   0 8px 28px rgba(0, 0, 0, 0.6),
+                0 0 26px rgba(129, 212, 250, 0.45),
+                inset 0 0 0 2px rgba(225, 245, 254, 0.5);
+}
+
+.tablero-galaxia {
+  background:   #241447;
+  border-color: #B388FF;
+  box-shadow:   0 8px 28px rgba(0, 0, 0, 0.6),
+                0 0 26px rgba(124, 77, 255, 0.45),
+                inset 0 0 0 2px rgba(179, 136, 255, 0.5);
+}
+
+// ── Dado ─────────────────────────────────────────────────────────
+.dado-dorado {
+  background: linear-gradient(145deg, #FFF8DC, #D4AF37);
+}
+
+.dado-cristal {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(176, 190, 197, 0.85));
+}
+
+.dado-neon {
+  background: linear-gradient(145deg, #E0F7FA, #4DD0E1);
+}
+
+.dado-diamante {
+  background: linear-gradient(145deg, #FFFFFF, #B3E5FC);
+}
+
+.dado-madera {
+  background: linear-gradient(145deg, #A1887F, #5D4037);
+}
+
+.dado-galaxia {
+  background: linear-gradient(145deg, #D1C4E9, #7C4DFF);
+}
+
 // ================================================================
 // ACCESIBILIDAD
 // ================================================================
@@ -923,6 +1053,7 @@ $blanco-casilla: #FFFFFF;
   .tiempo-relleno,
   .aviso-flotante,
   .burbuja-chat,
+  .estilo-neon,
   .chat-panel {
     animation:  none !important;
     transition: none !important;

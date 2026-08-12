@@ -37,7 +37,7 @@
     <!-- EL TABLERO — grid de 15×15                                       -->
     <!-- ================================================================ -->
     <div class="tablero-wrapper">
-      <div class="tablero-grid">
+      <div class="tablero-grid" [ngClass]="getEstiloTablero()">
 
         <ng-container *ngFor="let fila of filas; trackBy: trackIndice">
           <div
@@ -64,7 +64,7 @@
               <div
                 class="ficha"
                 *ngFor="let ficha of getFichasEnCelda(fila, columna); trackBy: trackFicha"
-                [ngClass]="'ficha-' + ficha.Color.toLowerCase()"
+                [ngClass]="['ficha-' + ficha.Color.toLowerCase(), getEstiloFicha(ficha)]"
                 [class.ficha-movible]="esFichaMovible(ficha)"
                 [class.ficha-mia]="ficha.JpId === jpId"
                 [class.ficha-capturada]="esFichaCapturada(ficha)"
@@ -133,6 +133,7 @@
         <div class="dado-contenedor">
           <div
             class="dado"
+            [ngClass]="getEstiloDado()"
             [class.dado-activo]="esMiTurno && !dadoTirado"
             [class.dado-girando]="girandoDado"
             (click)="tirarDado()">
