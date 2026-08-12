@@ -3,13 +3,7 @@ import { Router } from '@angular/router';
 import { ToastController } from '@ionic/angular/standalone';
 import { AuthService } from './auth';
 
-/**
- * RF-20: cierre automático de sesión tras 30 minutos sin actividad.
- *
- * Escucha eventos de interacción a nivel documento y reinicia el
- * temporizador con cada uno. Dos minutos antes de vencer avisa, para
- * que nadie pierda la sesión sin enterarse.
- */
+
 @Injectable({
   providedIn: 'root'
 })

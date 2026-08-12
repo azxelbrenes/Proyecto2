@@ -51,9 +51,7 @@ export class SignalRService {
 
   constructor(private authService: AuthService) {}
 
-  // ================================================================
-  // CONECTAR AL HUB
-  // ================================================================
+ 
   // Se llama una vez al entrar a la sala de espera o al tablero.
   // Si ya hay una conexión activa, no crea otra.
   public async conectar(): Promise<boolean> {
@@ -88,9 +86,7 @@ export class SignalRService {
     }
   }
 
-  // ================================================================
-  // EVENTOS QUE MANDA EL BACKEND
-  // ================================================================
+ 
   // Cada .on() corresponde a un SendAsync() del PartidaHub.
   // Los nombres deben coincidir EXACTAMENTE con los del backend.
   private registrarEventos(): void {
@@ -175,9 +171,7 @@ export class SignalRService {
     });
   }
 
-  // ================================================================
-  // MÉTODOS QUE LLAMAN AL BACKEND
-  // ================================================================
+
   // Cada invoke() llama a un método público del PartidaHub.
   // Los nombres deben coincidir EXACTAMENTE.
 
@@ -219,9 +213,7 @@ export class SignalRService {
     await this.invocar('VerificarReconexiones', parId);
   }
 
-  // ================================================================
-  // HELPER — invocar con validación de conexión
-  // ================================================================
+
   // Si la conexión se cayó, avisamos al componente en vez de que
   // la llamada explote en silencio.
   private async invocar(metodo: string, ...args: any[]): Promise<void> {
@@ -240,9 +232,7 @@ export class SignalRService {
     }
   }
 
-  // ================================================================
-  // DESCONECTAR
-  // ================================================================
+
   // Se llama al salir definitivamente del juego (logout, cerrar app).
   // NO al navegar entre pantallas: la conexión se mantiene viva
   // mientras el jugador esté en una partida.

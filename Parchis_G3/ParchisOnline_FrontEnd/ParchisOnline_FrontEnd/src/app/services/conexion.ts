@@ -2,13 +2,7 @@ import { Injectable, NgZone, inject } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { ToastController } from '@ionic/angular/standalone';
 
-/**
- * RF-19: detecta pérdida de conexión y avisa al usuario en vez de
- * dejar que la app falle en silencio.
- *
- * navigator.onLine detecta que el dispositivo no tiene red, pero no
- * detecta que el servidor esté caído: para eso está verificarApi().
- */
+
 @Injectable({
   providedIn: 'root'
 })
