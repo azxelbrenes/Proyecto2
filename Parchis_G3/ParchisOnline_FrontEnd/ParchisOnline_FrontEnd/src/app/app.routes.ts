@@ -73,9 +73,7 @@ export const routes: Routes = [
     path: 'tutorial',
     canActivate: [authGuard],
     loadComponent: () => import('./pages/tutorial/tutorial.page').then( m => m.TutorialPage)
-  },
-  
-    
+  },   
   {
     path: 'logros',
      canActivate: [authGuard],
