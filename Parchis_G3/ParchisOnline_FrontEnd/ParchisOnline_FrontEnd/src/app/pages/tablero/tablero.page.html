@@ -33,9 +33,8 @@
     <!-- ── Aviso flotante de eventos ──────────────────────────── -->
     <div class="aviso-flotante" *ngIf="aviso">{{ aviso }}</div>
 
-    <!-- ================================================================ -->
     <!-- EL TABLERO — grid de 15×15                                       -->
-    <!-- ================================================================ -->
+   
     <div class="tablero-wrapper">
       <div class="tablero-grid" [ngClass]="getEstiloTablero()">
 
@@ -79,9 +78,9 @@
       </div>
     </div>
 
-    <!-- ================================================================ -->
-    <!-- PANEL INFERIOR — turno, dado y acciones                          -->
-    <!-- ================================================================ -->
+   
+    <!-- PANEL INFERIOR — turno, dado y acciones -->
+  
     <div class="panel-inferior">
 
       <!-- ── Indicador de turno ───────────────────────────────── -->
@@ -164,9 +163,9 @@
 
   </div>
 
-  <!-- ================================================================ -->
-  <!-- PANEL DE CHAT                                                    -->
-  <!-- ================================================================ -->
+
+  <!-- PANEL DE CHAT   -->
+
   <div class="chat-overlay" *ngIf="mostrarChat" (click)="toggleChat()">
     <div class="chat-panel" (click)="$event.stopPropagation()">
 

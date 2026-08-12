@@ -74,10 +74,8 @@ export class HomePage implements OnInit, ViewWillEnter {
     this.buscandoPartida = false;
   }
 
-  // ================================================================
+  
   // RECOMPENSA DIARIA
-  // ================================================================
-
   // ── verificarRecompensa ──────────────────────────────────────
   // Al abrir el home preguntamos al backend si hay recompensa
   // disponible. Si la hay, mostramos el modal automáticamente.
@@ -176,9 +174,9 @@ export class HomePage implements OnInit, ViewWillEnter {
     return dia === racha;
   }
 
-  // ================================================================
+  
   // SALAS
-  // ================================================================
+  
   cargarSalas(): void {
     this.cargando = true;
 
@@ -289,9 +287,9 @@ export class HomePage implements OnInit, ViewWillEnter {
     });
   }
 
-  // ================================================================
+
   // HELPERS
-  // ================================================================
+
   private async mostrarToast(mensaje: string, color: string): Promise<void> {
     const toast = await this.toastController.create({
       message:  mensaje,

@@ -80,7 +80,7 @@ export class LoginPage {
       next: async (respuesta) => {
         this.cargando = false;
 
-        // RF-20: arranca el reloj de los 30 minutos de inactividad.
+        // arranca el reloj de los 30 minutos de inactividad.
         // Tiene que ser acá y no en AppComponent: el ngOnInit de la
         // app ya corrió antes de que existiera la sesión.
         this.inactividad.iniciar();
@@ -93,7 +93,7 @@ export class LoginPage {
         });
         await toast.present();
 
-        // RF-16: el tutorial se muestra una sola vez, en el primer
+        // el tutorial se muestra una sola vez, en el primer
         // ingreso. Después queda accesible desde el perfil.
         const tutorialVisto = respuesta.usuario?.UsuTutorialCompletado === true;
         const destino = tutorialVisto ? '/home' : '/tutorial';

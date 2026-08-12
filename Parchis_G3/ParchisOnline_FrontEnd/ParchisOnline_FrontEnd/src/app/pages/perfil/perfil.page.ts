@@ -57,9 +57,9 @@ export class PerfilPage implements OnInit {
     this.cargarPerfil();
   }
 
-  // ================================================================
+
   // CARGAR PERFIL
-  // ================================================================
+  
   // Trae el perfil completo desde la API. Después dispara la carga
   // del equipamiento y las estadísticas en paralelo.
   cargarPerfil(): void {
@@ -101,9 +101,9 @@ export class PerfilPage implements OnInit {
     });
   }
 
-  // ================================================================
+ 
   // EQUIPAMIENTO
-  // ================================================================
+
   // Trae qué ficha, tablero y dado tiene el jugador equipados.
   // El backend nunca devuelve null: si nunca equipó nada, le
   // manda los artículos predeterminados gratuitos.
@@ -141,9 +141,9 @@ export class PerfilPage implements OnInit {
     return 'item-clasico';
   }
 
-  // ================================================================
+ 
   // EDICIÓN DEL NOMBRE
-  // ================================================================
+ 
   activarEdicion(): void {
     this.nombreEditado = this.usuario.UsuNombre;
     this.editando = true;
@@ -194,9 +194,9 @@ export class PerfilPage implements OnInit {
     });
   }
 
-  // ================================================================
+  
   // CERRAR SESIÓN
-  // ================================================================
+ 
   async cerrarSesion(): Promise<void> {
     const alert = await this.alertController.create({
       cssClass: 'alert-parchis',

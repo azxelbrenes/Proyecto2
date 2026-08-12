@@ -55,9 +55,9 @@ export class RankingPage implements OnInit, ViewWillEnter {
     this.cargarRanking();
   }
 
-  // ================================================================
+
   // CARGAR RANKING
-  // ================================================================
+ 
   private cargarRanking(): void {
     this.cargando = true;
 
@@ -84,10 +84,8 @@ export class RankingPage implements OnInit, ViewWillEnter {
     });
   }
 
-  // ================================================================
+  
   // HELPERS VISUALES
-  // ================================================================
-
   // ¿El usuario actual está dentro del top mostrado?
   // Si no está, mostramos su posición fija abajo para que
   // siempre pueda verse a sí mismo.

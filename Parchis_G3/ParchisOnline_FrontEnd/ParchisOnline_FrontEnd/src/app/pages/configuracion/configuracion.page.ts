@@ -90,9 +90,9 @@ export class ConfiguracionPage implements OnInit {
     });
   }
 
-  // ================================================================
+  
   // DATOS PERSONALES
-  // ================================================================
+ 
   guardarDatos(): void {
     const nombre = this.nombre.trim();
 
@@ -126,9 +126,8 @@ export class ConfiguracionPage implements OnInit {
     this.avatar = numero;
   }
 
-  // ================================================================
+
   // PREFERENCIAS
-  // ================================================================
   // Se guardan al instante en vez de con un botón: un toggle que hay
   // que confirmar aparte se siente roto.
   guardarPreferencias(): void {
@@ -149,9 +148,9 @@ export class ConfiguracionPage implements OnInit {
     });
   }
 
-  // ================================================================
+
   // CONTRASEÑA
-  // ================================================================
+ 
   cambiarPassword(): void {
     if (!this.passwordActual || !this.passwordNueva) {
       this.mostrarToast('Completá ambas contraseñas.', 'warning');
@@ -198,9 +197,9 @@ export class ConfiguracionPage implements OnInit {
     this.mostrarPasswords = !this.mostrarPasswords;
   }
 
-  // ================================================================
+
   // SESIÓN Y CUENTA
-  // ================================================================
+  
   async cerrarSesion(): Promise<void> {
     const alert = await this.alertController.create({
       cssClass: 'alert-parchis',
@@ -293,9 +292,9 @@ export class ConfiguracionPage implements OnInit {
     });
   }
 
-  // ================================================================
+
   // NAVEGACIÓN Y HELPERS
-  // ================================================================
+
   volver(): void {
     this.router.navigate(['/perfil']);
   }

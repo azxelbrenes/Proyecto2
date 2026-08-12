@@ -82,10 +82,7 @@ $fondo-oscuro: #1C1230;
   margin:      0;
   max-width:   340px;
 }
-
-// ================================================================
 // DEMOS VISUALES
-// ================================================================
 .demo {
   display:         flex;
   align-items:     center;
@@ -320,9 +317,7 @@ $fondo-oscuro: #1C1230;
   font-size:       0.88rem;
 }
 
-// ================================================================
 // ANIMACIONES
-// ================================================================
 @keyframes entrarEmoji {
   from { opacity: 0; transform: scale(0.6) translateY(10px); }
   to   { opacity: 1; transform: scale(1)   translateY(0);    }

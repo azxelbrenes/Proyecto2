@@ -14,13 +14,6 @@
         <span>{{ usuario?.UsuMonedasTotal || 0 | number }}</span>
       </div>
     </div>
-
-    <!-- ================================================================ -->
-    <!-- ORDEN PENDIENTE — pasos a seguir tras abrir PayPal              -->
-    <!-- ================================================================ -->
-    <!-- Esta caja es lo PRIMERO que se ve cuando hay una compra en
-         curso. Antes el usuario volvía de PayPal y solo veía los
-         paquetes, sin saber qué hacer. -->
     <div class="orden-pendiente" *ngIf="ordenPendiente" [class.pendiente-activa]="volvioDePayPal">
 
       <div class="pendiente-header">

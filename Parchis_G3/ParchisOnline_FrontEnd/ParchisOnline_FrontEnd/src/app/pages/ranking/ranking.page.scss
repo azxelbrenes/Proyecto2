@@ -79,9 +79,9 @@
   span     { font-size: 0.78rem; color: rgba(255,255,255,0.35); }
 }
 
-// ================================================================
+
 // PODIO — los 3 primeros lugares
-// ================================================================
+
 // Se muestran en tarjetas grandes horizontales, con el primer
 // lugar destacado. Es lo primero que ve el jugador al entrar.
 .podio-wrapper {
@@ -201,9 +201,9 @@
   outline-offset: 2px;
 }
 
-// ================================================================
+
 // LISTA — del 4to lugar en adelante
-// ================================================================
+
 .lista-ranking {
   display:        flex;
   flex-direction: column;
@@ -295,9 +295,9 @@
   border-color: rgba(255, 195, 0, 0.4) !important;
 }
 
-// ================================================================
+
 // MI POSICIÓN FIJA
-// ================================================================
+
 // Barra fija abajo que muestra tu posición cuando estás fuera
 // del top. Sin esto, un jugador nuevo abriría el ranking y no
 // se vería a sí mismo por ningún lado.

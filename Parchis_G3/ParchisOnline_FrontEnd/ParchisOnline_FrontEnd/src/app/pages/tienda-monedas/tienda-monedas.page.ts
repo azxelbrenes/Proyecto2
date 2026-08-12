@@ -80,9 +80,7 @@ export class TiendaMonedasPage implements OnInit, OnDestroy, ViewWillEnter {
     this.recuperarOrdenPendiente();
   }
  
-  // ================================================================
   // DETECCIÓN DE REGRESO DE PAYPAL
-  // ================================================================
   // Se dispara cuando la pestaña vuelve a estar visible, es decir
   // cuando el usuario cierra PayPal y regresa a la app.
   private alVolverALaPestana(): void {
@@ -95,10 +93,7 @@ export class TiendaMonedasPage implements OnInit, OnDestroy, ViewWillEnter {
       this.mostrarToast('Si ya pagaste, confirmá abajo para recibir tus monedas.', 'warning');
     }
   }
- 
-  // ================================================================
   // PERSISTENCIA DE LA ORDEN
-  // ================================================================
   // Guardamos la orden en sessionStorage para que sobreviva al
   // reinicio del componente cuando el usuario vuelve de PayPal.
  
@@ -125,10 +120,7 @@ export class TiendaMonedasPage implements OnInit, OnDestroy, ViewWillEnter {
     this.volvioDePayPal = false;
     sessionStorage.removeItem(this.CLAVE_ORDEN);
   }
- 
-  // ================================================================
   // CARGAR PAQUETES
-  // ================================================================
   private cargarPaquetes(): void {
     this.cargando = true;
  
@@ -144,9 +136,9 @@ export class TiendaMonedasPage implements OnInit, OnDestroy, ViewWillEnter {
     });
   }
  
-  // ================================================================
+
   // PASO 1 — CREAR LA ORDEN Y ABRIR PAYPAL
-  // ================================================================
+ 
   async comprarPaquete(paquete: any): Promise<void> {
     if (this.procesando !== null) return;
  
@@ -211,9 +203,9 @@ export class TiendaMonedasPage implements OnInit, OnDestroy, ViewWillEnter {
     window.open(url, '_blank');
   }
  
-  // ================================================================
+  
   // PASO 2 — CAPTURAR EL PAGO
-  // ================================================================
+
   // El backend le pregunta a PayPal si la orden está COMPLETED.
   // Solo si PayPal lo confirma se acreditan las monedas.
   confirmarPago(): void {
@@ -312,9 +304,8 @@ export class TiendaMonedasPage implements OnInit, OnDestroy, ViewWillEnter {
     await alert.present();
   }
  
-  // ================================================================
+ 
   // LIMPIAR MENSAJE
-  // ================================================================
   // Blindaje contra JSON crudo. El backend ya traduce los errores
   // de PayPal a español, pero si por alguna razón llega un JSON
   // técnico (500+ caracteres con llaves), lo reemplazamos por un
@@ -333,9 +324,7 @@ export class TiendaMonedasPage implements OnInit, OnDestroy, ViewWillEnter {
     return mensaje;
   }
  
-  // ================================================================
   // HELPERS
-  // ================================================================
   getPaqueteClass(paquete: any): string {
     const clases: { [key: number]: string } = {
       1: 'paquete-pequeno',

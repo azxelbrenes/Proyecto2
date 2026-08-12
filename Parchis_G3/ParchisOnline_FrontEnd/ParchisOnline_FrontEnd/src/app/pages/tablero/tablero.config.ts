@@ -62,9 +62,9 @@ export const OFFSET_COLOR: { [key: string]: number } = {
 
 export const COLORES: string[] = ['AZUL', 'VERDE', 'AMARILLO', 'ROJO'];
 
-// ================================================================
+
 // EL ANILLO — 52 casillas en sentido horario
-// ================================================================
+
 // Arranca en la salida del AZUL (7,2) y recorre el perímetro de la
 // cruz. Cada par de casillas consecutivas es ortogonalmente
 // adyacente, incluido el cierre 51 → 0. Lo verifica validarAnillo().
@@ -146,9 +146,9 @@ export const ANILLO: Celda[] = [
   { fila: 7,  columna: 1  }   // 51 → vuelve a la 0
 ];
 
-// ================================================================
+
 // RECTAS FINALES — 5 casillas, del borde hacia el centro
-// ================================================================
+
 // Ningún rival puede pisarlas. La casilla 56 es la última; el
 // centro (8,8) es la coronación y no forma parte de la recta.
 export const RECTA_FINAL: { [key: string]: Celda[] } = {
@@ -189,9 +189,9 @@ export const RECTA_FINAL: { [key: string]: Celda[] } = {
 // La coronación: el centro exacto del tablero
 export const CELDA_CENTRO: Celda = { fila: 8, columna: 8 };
 
-// ================================================================
+
 // ZONAS DE CASA — bloques de 6×6 en las esquinas
-// ================================================================
+
 // Las cuatro miden exactamente lo mismo. Antes azul y rojo medían
 // 6×4 y verde y amarillo 6×5, que era la asimetría más visible.
 export interface ZonaCasa {
@@ -229,9 +229,9 @@ export const CASAS: { [key: string]: Celda[] } = {
   ]
 };
 
-// ================================================================
+
 // CASILLAS SEGURAS
-// ================================================================
+
 // Las 4 salidas, más una estrella 8 casillas adelante de cada una.
 // Las 8 son rotaciones exactas unas de otras: (f,c) → (c, 16-f).
 export const CASILLAS_SALIDA: number[] = [0, 13, 26, 39];
@@ -245,9 +245,9 @@ export const COLOR_POR_SALIDA: { [indice: number]: string } = {
   39: 'ROJO'
 };
 
-// ================================================================
-// POSICIÓN LÓGICA → CELDA DEL GRID
-// ================================================================
+
+// POSICIÓN LÓGICA -CELDA DEL GRID
+
 export function obtenerCelda(
   posicion: number,
   color: string,
@@ -301,9 +301,7 @@ export function esCasillaSegura(indiceAnillo: number): boolean {
   return esCasillaSalida(indiceAnillo) || esCasillaEstrella(indiceAnillo);
 }
 
-// ================================================================
-// MAPA PRECALCULADO DE CLASES CSS
-// ================================================================
+
 // El tablero nunca cambia, así que calculamos las clases de las 225
 // celdas una sola vez. Antes el template llamaba a getTipoCelda()
 // 225 veces por ciclo de detección de cambios, y cada llamada hacía
@@ -395,9 +393,7 @@ function calcularInfoCelda(fila: number, columna: number): InfoCelda {
   return { clases: 'celda-vacia', estrella: false };
 }
 
-// ================================================================
-// AUTOVALIDACIÓN — corré esto una vez y olvidate del tema
-// ================================================================
+
 // Devuelve la lista de errores del anillo. Si devuelve vacío, la
 // geometría es correcta. Este es el chequeo que faltaba y que
 // habría detectado las casillas diagonales del anillo anterior.

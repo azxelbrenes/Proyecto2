@@ -1,8 +1,3 @@
-// ================================================================
-// PALETA
-// ================================================================
-// Un solo lugar donde cambiar los colores del juego. Antes cada hex
-// estaba repetido en cuatro o cinco reglas distintas.
 $rojo:     #E53935;
 $azul:     #1E88E5;
 $verde:    #43A047;
@@ -48,9 +43,8 @@ $blanco-casilla: #FFFFFF;
   p { margin-top: 1rem; font-size: 0.9rem; }
 }
 
-// ================================================================
+
 // BARRA DE JUGADORES
-// ================================================================
 .jugadores-bar {
   display:               grid;
   grid-template-columns: repeat(4, 1fr);
@@ -150,9 +144,8 @@ $blanco-casilla: #FFFFFF;
   animation:     aparecerAviso 0.3s ease;
 }
 
-// ================================================================
+
 // EL TABLERO
-// ================================================================
 .tablero-wrapper {
   flex:            1;
   display:         flex;
@@ -251,9 +244,9 @@ $blanco-casilla: #FFFFFF;
   box-shadow:    inset 0 0 0 2px rgba(255, 255, 255, 0.75);
 }
 
-// ================================================================
+
 // EL CENTRO — bloque 3×3 (filas 7-9, columnas 7-9)
-// ================================================================
+
 // Las cuatro cuñas se dibujan repartidas entre las 9 celdas:
 //   · 4 celdas de color plano (los brazos)
 //   · 4 esquinas partidas por la diagonal
@@ -310,9 +303,8 @@ $blanco-casilla: #FFFFFF;
   filter:         drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7));
 }
 
-// ================================================================
+
 // FICHAS
-// ================================================================
 .fichas-celda {
   position:        absolute;
   inset:           0;
@@ -370,9 +362,8 @@ $blanco-casilla: #FFFFFF;
   z-index:    10;
 }
 
-// ================================================================
+
 // PANEL INFERIOR
-// ================================================================
 .panel-inferior {
   padding-top:    0.5rem;
   padding-bottom: env(safe-area-inset-bottom);
@@ -609,9 +600,8 @@ $blanco-casilla: #FFFFFF;
   border:          2px solid $fondo-oscuro;
 }
 
-// ================================================================
+
 // CHAT
-// ================================================================
 .chat-overlay {
   position:                fixed;
   inset:                   0;
@@ -773,9 +763,9 @@ $blanco-casilla: #FFFFFF;
   &:active { transform: scale(0.92); }
 }
 
-// ================================================================
+
 // ANIMACIONES
-// ================================================================
+
 @keyframes girarDado {
   from { transform: rotate(0deg);   }
   to   { transform: rotate(360deg); }
@@ -819,9 +809,7 @@ $blanco-casilla: #FFFFFF;
 }
 
 
-// ================================================================
-// MENSAJE FLOTANTE DEL CHAT (RF-09)
-// ================================================================
+// MENSAJE FLOTANTE DEL CHAT 
 // La burbuja se ancla a la celda de la ficha y se levanta por encima
 // con translateY negativo. Como la celda mide unos 25 px y el texto
 // es más ancho, se centra con left 50% + translateX(-50%) y se deja
@@ -881,9 +869,8 @@ $blanco-casilla: #FFFFFF;
   }
 }
 
-// ================================================================
-// ANIMACIONES DE CAPTURA Y CORONACIÓN (RF-18)
-// ================================================================
+
+// ANIMACIONES DE CAPTURA Y CORONACIÓN 
 // Se disparan agregando la clase desde el componente; el aviso
 // flotante ya cubre el texto, esto es el refuerzo visual.
 @keyframes fichaCapturada {
@@ -906,10 +893,6 @@ $blanco-casilla: #FFFFFF;
   z-index:   12;
 }
 
-
-// ================================================================
-// ARTÍCULOS EQUIPADOS (RF-06)
-// ================================================================
 // Los estilos comprados en la tienda se aplican sobre el aspecto
 // base, no lo reemplazan: la ficha conserva su color de jugador y
 // el artículo agrega brillo, borde o textura encima. Si se cambiara
@@ -1036,9 +1019,9 @@ $blanco-casilla: #FFFFFF;
   background: linear-gradient(145deg, #D1C4E9, #7C4DFF);
 }
 
-// ================================================================
+
 // ACCESIBILIDAD
-// ================================================================
+
 // Respeta la preferencia del sistema de reducir movimiento. Sin
 // esto, un tablero con cinco animaciones en bucle es molesto para
 // quien tiene sensibilidad al movimiento.

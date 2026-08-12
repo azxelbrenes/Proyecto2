@@ -72,13 +72,10 @@
   color:      rgba(255, 255, 255, 0.55);
   p { margin-top: 0.8rem; font-size: 0.9rem; }
 }
- 
-// ================================================================
+
 // ORDEN PENDIENTE
-// ================================================================
 // Aparece cuando el usuario ya abrió PayPal. Es lo PRIMERO que ve
 // al volver a la app, con pasos claros de qué hacer.
-//
 // Antes el usuario volvía de PayPal y solo veía los 4 paquetes,
 // sin saber que tenía que confirmar el pago.
 .orden-pendiente {
@@ -200,9 +197,7 @@
   50%      { box-shadow: 0 0 0 8px rgba(76, 175, 80, 0);   }
 }
  
-// ================================================================
 // GRID DE PAQUETES
-// ================================================================
 .paquetes-grid {
   display:               grid;
   grid-template-columns: 1fr 1fr;
@@ -325,10 +320,8 @@
   margin:          0;
   z-index:         1;
 }
- 
-// ================================================================
+
 // COLORES POR PAQUETE
-// ================================================================
 // Cada paquete tiene un color propio, y los más caros se ven más
 // vistosos — eso comunica valor sin necesidad de leer el precio.
  

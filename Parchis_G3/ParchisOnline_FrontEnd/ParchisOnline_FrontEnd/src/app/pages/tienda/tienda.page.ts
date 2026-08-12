@@ -66,9 +66,8 @@ export class TiendaPage implements OnInit, ViewWillEnter {
     this.refrescarInventario();
   }
 
-  // ================================================================
+
   // CARGAR CATÁLOGO + INVENTARIO
-  // ================================================================
   // Primero traemos el inventario y después el catálogo, así
   // cuando se renderiza la lista ya sabemos qué tiene comprado.
   private cargarTodo(): void {
@@ -110,9 +109,7 @@ export class TiendaPage implements OnInit, ViewWillEnter {
     this.cargarArticulos();
   }
 
-  // ================================================================
   // ESTADO DE CADA ARTÍCULO
-  // ================================================================
 
   // ¿El jugador ya tiene este artículo desbloqueado?
   yaLoTiene(articulo: any): boolean {
@@ -130,9 +127,8 @@ export class TiendaPage implements OnInit, ViewWillEnter {
     return (this.usuario?.UsuMonedasTotal ?? 0) >= articulo.ArtPrecio;
   }
 
-  // ================================================================
+  
   // SISTEMA DE RAREZA
-  // ================================================================
   // La rareza se calcula según el precio. Le da jerarquía visual
   // al catálogo: los artículos caros se ven claramente más
   // valiosos que los baratos, aunque no leas el precio.
@@ -153,10 +149,7 @@ export class TiendaPage implements OnInit, ViewWillEnter {
     if (precio <= 6000) return 'rareza-epico';
     return 'rareza-legendario';
   }
-
-  // ================================================================
   // IDENTIDAD VISUAL POR ARTÍCULO
-  // ================================================================
   // Este es el arreglo más importante del rediseño. Antes TODOS
   // los artículos se veían idénticos (la misma ficha roja sobre
   // amarillo), así que el jugador no sabía qué estaba comprando.
@@ -178,9 +171,8 @@ export class TiendaPage implements OnInit, ViewWillEnter {
     return 'item-clasico';
   }
 
-  // ================================================================
+  
   // COMPRAR
-  // ================================================================
   comprar(articulo: any): void {
     // Los predeterminados no se compran, ya los tiene
     if (this.yaLoTiene(articulo)) return;
@@ -220,9 +212,7 @@ export class TiendaPage implements OnInit, ViewWillEnter {
     });
   }
 
-  // ================================================================
   // EQUIPAR
-  // ================================================================
   // Pone el artículo como activo en su categoría. El backend hace
   // un upsert: si ya tenía otra ficha equipada, la reemplaza.
   equipar(articulo: any): void {
@@ -254,9 +244,7 @@ export class TiendaPage implements OnInit, ViewWillEnter {
     });
   }
 
-  // ================================================================
   // HELPERS
-  // ================================================================
   private async mostrarToast(mensaje: string, color: string): Promise<void> {
     const toast = await this.toastController.create({
       message:  mensaje,
