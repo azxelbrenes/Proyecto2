@@ -1,0 +1,131 @@
+<ion-content class="tutorial-content" [fullscreen]="true">
+
+  <div class="tutorial-container">
+
+    <!-- ── Barra de progreso y salir ──────────────────────────── -->
+    <div class="tutorial-header">
+      <div class="progreso-barra">
+        <div class="progreso-relleno" [style.width.%]="progreso"></div>
+      </div>
+      <span class="btn-saltar" (click)="saltar()">Saltar</span>
+    </div>
+
+    <!-- ── Contenido del paso ─────────────────────────────────── -->
+    <div class="paso-cuerpo">
+
+      <div class="paso-emoji">{{ paso.emoji }}</div>
+
+      <h2 class="paso-titulo">{{ paso.titulo }}</h2>
+
+      <!-- ══ DEMOS VISUALES ═══════════════════════════════════ -->
+
+      <!-- Paso 1: el tablero y las 4 casas -->
+      <div class="demo demo-tablero" *ngIf="paso.demo === 'tablero'">
+        <div class="mini-tablero">
+          <div class="mini-casa casa-azul"><span></span><span></span><span></span><span></span></div>
+          <div class="mini-pasillo pasillo-vertical"></div>
+          <div class="mini-casa casa-verde"><span></span><span></span><span></span><span></span></div>
+          <div class="mini-pasillo pasillo-horizontal"></div>
+          <div class="mini-centro">👑</div>
+          <div class="mini-pasillo pasillo-horizontal"></div>
+          <div class="mini-casa casa-rojo"><span></span><span></span><span></span><span></span></div>
+          <div class="mini-pasillo pasillo-vertical"></div>
+          <div class="mini-casa casa-amarillo"><span></span><span></span><span></span><span></span></div>
+        </div>
+      </div>
+
+      <!-- Paso 2: el dado con un 5 -->
+      <div class="demo demo-dado" *ngIf="paso.demo === 'dado'">
+        <div class="dado-demo">
+          <span class="punto-demo"></span>
+          <span class="punto-demo"></span>
+          <span class="punto-demo"></span>
+          <span class="punto-demo"></span>
+          <span class="punto-demo"></span>
+        </div>
+        <div class="flecha-demo">→</div>
+        <div class="casilla-demo casilla-salida">
+          <div class="ficha-demo ficha-demo-azul"></div>
+        </div>
+      </div>
+
+      <!-- Paso 3: captura -->
+      <div class="demo demo-captura" *ngIf="paso.demo === 'captura'">
+        <div class="fila-demo">
+          <div class="casilla-demo">
+            <div class="ficha-demo ficha-demo-azul"></div>
+          </div>
+          <div class="flecha-demo">→</div>
+          <div class="casilla-demo casilla-impacto">
+            <div class="ficha-demo ficha-demo-rojo ficha-huyendo"></div>
+          </div>
+        </div>
+        <div class="demo-nota">La ficha roja vuelve a su casa</div>
+      </div>
+
+      <!-- Paso 4: casilla segura -->
+      <div class="demo demo-seguro" *ngIf="paso.demo === 'seguro'">
+        <div class="fila-demo">
+          <div class="casilla-demo casilla-estrella">
+            <span class="estrella-demo">★</span>
+            <div class="ficha-demo ficha-demo-verde"></div>
+          </div>
+          <div class="escudo-demo">🛡️</div>
+        </div>
+        <div class="demo-nota">Acá nadie te puede comer</div>
+      </div>
+
+      <!-- Paso 5: pasillo y meta -->
+      <div class="demo demo-meta" *ngIf="paso.demo === 'meta'">
+        <div class="pasillo-demo">
+          <div class="casilla-demo casilla-pasillo"></div>
+          <div class="casilla-demo casilla-pasillo"></div>
+          <div class="casilla-demo casilla-pasillo">
+            <div class="ficha-demo ficha-demo-amarillo"></div>
+          </div>
+          <div class="centro-demo">👑</div>
+        </div>
+        <div class="demo-nota">Hay que caer exacto en el centro</div>
+      </div>
+
+      <p class="paso-descripcion">{{ paso.descripcion }}</p>
+
+    </div>
+
+    <!-- ── Puntos de navegación ───────────────────────────────── -->
+    <div class="puntos-nav">
+      <span
+        class="punto-nav"
+        *ngFor="let p of pasos; let i = index"
+        [class.punto-activo]="i === pasoActual"
+        (click)="irAPaso(i)">
+      </span>
+    </div>
+
+    <!-- ── Botones ────────────────────────────────────────────── -->
+    <div class="tutorial-botones">
+
+      <ion-button
+        fill="clear"
+        class="btn-anterior"
+        [disabled]="esPrimero"
+        (click)="anterior()">
+        <ion-icon name="arrow-back" slot="start"></ion-icon>
+        Atrás
+      </ion-button>
+
+      <ion-button
+        class="btn-siguiente"
+        (click)="siguiente()">
+        {{ esUltimo ? '¡Entendido!' : 'Siguiente' }}
+        <ion-icon
+          [name]="esUltimo ? 'checkmark-circle' : 'arrow-forward'"
+          slot="end">
+        </ion-icon>
+      </ion-button>
+
+    </div>
+
+  </div>
+
+</ion-content>

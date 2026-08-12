@@ -93,8 +93,13 @@ export class LoginPage {
         });
         await toast.present();
 
+        // RF-16: el tutorial se muestra una sola vez, en el primer
+        // ingreso. Después queda accesible desde el perfil.
+        const tutorialVisto = respuesta.usuario?.UsuTutorialCompletado === true;
+        const destino = tutorialVisto ? '/home' : '/tutorial';
+
         // replaceUrl para que el botón atrás no vuelva al login
-        this.router.navigate(['/home'], { replaceUrl: true });
+        this.router.navigate([destino], { replaceUrl: true });
       },
       error: (error) => {
         this.cargando = false;

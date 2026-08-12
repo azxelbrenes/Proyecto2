@@ -1,0 +1,356 @@
+$rojo:         #E53935;
+$azul:         #1E88E5;
+$verde:        #43A047;
+$amarillo:     #FDD835;
+$dorado:       #FFC300;
+$dorado-claro: #FFDD55;
+$fondo-oscuro: #1C1230;
+
+.tutorial-content {
+  --background: radial-gradient(circle at top, #2D1B4E 0%, #1C1230 45%, #0D0818 100%);
+}
+
+.tutorial-container {
+  display:        flex;
+  flex-direction: column;
+  min-height:     100vh;
+  max-width:      480px;
+  margin:         0 auto;
+  padding:        1.2rem 1.2rem 2rem;
+}
+
+// ── Header con progreso ──────────────────────────────────────────
+.tutorial-header {
+  display:     flex;
+  align-items: center;
+  gap:         1rem;
+  margin-bottom: 2rem;
+}
+
+.progreso-barra {
+  flex:          1;
+  height:        5px;
+  border-radius: 3px;
+  background:    rgba(255, 255, 255, 0.12);
+  overflow:      hidden;
+}
+
+.progreso-relleno {
+  height:     100%;
+  background: linear-gradient(90deg, $dorado, $dorado-claro);
+  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-saltar {
+  color:       rgba(255, 255, 255, 0.45);
+  font-size:   0.8rem;
+  font-weight: 700;
+  cursor:      pointer;
+  flex-shrink: 0;
+
+  &:active { color: $dorado-claro; }
+}
+
+// ── Cuerpo del paso ──────────────────────────────────────────────
+.paso-cuerpo {
+  flex:            1;
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  justify-content: center;
+  text-align:      center;
+  gap:             1rem;
+}
+
+.paso-emoji {
+  font-size: 3rem;
+  animation: entrarEmoji 0.4s ease;
+}
+
+.paso-titulo {
+  color:       white;
+  font-size:   1.3rem;
+  font-weight: 900;
+  margin:      0;
+  line-height: 1.25;
+}
+
+.paso-descripcion {
+  color:       rgba(255, 255, 255, 0.7);
+  font-size:   0.9rem;
+  line-height: 1.6;
+  margin:      0;
+  max-width:   340px;
+}
+
+// ================================================================
+// DEMOS VISUALES
+// ================================================================
+.demo {
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  flex-direction:  column;
+  gap:             0.8rem;
+  margin:          0.5rem 0;
+  min-height:      130px;
+  animation:       entrarDemo 0.35s ease;
+}
+
+.demo-nota {
+  color:       rgba(255, 255, 255, 0.45);
+  font-size:   0.72rem;
+  font-style:  italic;
+}
+
+// ── Mini tablero (paso 1) ────────────────────────────────────────
+.mini-tablero {
+  display:               grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows:    repeat(3, 1fr);
+  gap:                   3px;
+  width:                 130px;
+  height:                130px;
+  padding:               5px;
+  background:            #5D3A1A;
+  border-radius:         8px;
+}
+
+.mini-casa {
+  display:               grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap:                   3px;
+  padding:               4px;
+  border-radius:         4px;
+
+  span {
+    background:    rgba(255, 255, 255, 0.85);
+    border-radius: 50%;
+  }
+}
+
+.casa-azul     { background: $azul;     }
+.casa-verde    { background: $verde;    }
+.casa-rojo     { background: $rojo;     }
+.casa-amarillo { background: $amarillo; }
+
+.mini-pasillo {
+  background:    #F5F0E6;
+  border-radius: 3px;
+}
+
+.mini-centro {
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  font-size:       1.1rem;
+  background:      conic-gradient(
+    #{$verde}      0deg  90deg,
+    #{$amarillo}  90deg 180deg,
+    #{$rojo}     180deg 270deg,
+    #{$azul}     270deg 360deg
+  );
+  border-radius: 4px;
+}
+
+// ── Dado (paso 2) ────────────────────────────────────────────────
+.demo-dado {
+  flex-direction: row;
+  gap:            1rem;
+}
+
+.dado-demo {
+  display:               grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows:    repeat(3, 1fr);
+  width:                 58px;
+  height:                58px;
+  padding:               8px;
+  background:            linear-gradient(145deg, #FFFFFF, #DCDCDC);
+  border-radius:         12px;
+  box-shadow:            0 4px 12px rgba(0, 0, 0, 0.5);
+  place-items:           center;
+  animation:             latirDemo 1.5s ease-in-out infinite;
+}
+
+.punto-demo {
+  width:         8px;
+  height:        8px;
+  border-radius: 50%;
+  background:    $fondo-oscuro;
+
+  // Patrón del 5: cuatro esquinas y el centro
+  &:nth-child(1) { grid-area: 1 / 1; }
+  &:nth-child(2) { grid-area: 1 / 3; }
+  &:nth-child(3) { grid-area: 2 / 2; }
+  &:nth-child(4) { grid-area: 3 / 1; }
+  &:nth-child(5) { grid-area: 3 / 3; }
+}
+
+// ── Casillas y fichas de demo ────────────────────────────────────
+.fila-demo,
+.pasillo-demo {
+  display:     flex;
+  align-items: center;
+  gap:         0.5rem;
+}
+
+.casilla-demo {
+  position:        relative;
+  width:           38px;
+  height:          38px;
+  background:      #FFFFFF;
+  border:          1px solid rgba(0, 0, 0, 0.25);
+  border-radius:   5px;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  flex-shrink:     0;
+}
+
+.casilla-salida   { background: $azul;     }
+.casilla-pasillo  { background: $amarillo; }
+
+.casilla-impacto {
+  animation: impactoDemo 1.4s ease-in-out infinite;
+}
+
+.casilla-estrella {
+  background: #FFFFFF;
+}
+
+.estrella-demo {
+  position:  absolute;
+  color:     rgba(0, 0, 0, 0.35);
+  font-size: 0.8rem;
+}
+
+.ficha-demo {
+  width:         24px;
+  height:        24px;
+  border-radius: 50%;
+  border:        2px solid rgba(255, 255, 255, 0.95);
+  box-shadow:    0 2px 4px rgba(0, 0, 0, 0.5);
+  position:      relative;
+  z-index:       2;
+}
+
+.ficha-demo-rojo     { background: radial-gradient(circle at 35% 30%, #FF6B6B, #C62828); }
+.ficha-demo-azul     { background: radial-gradient(circle at 35% 30%, #64B5F6, #1565C0); }
+.ficha-demo-verde    { background: radial-gradient(circle at 35% 30%, #81C784, #2E7D32); }
+.ficha-demo-amarillo { background: radial-gradient(circle at 35% 30%, #FFF176, #F9A825); }
+
+.ficha-huyendo {
+  animation: huirDemo 1.4s ease-in-out infinite;
+}
+
+.flecha-demo {
+  color:     $dorado;
+  font-size: 1.3rem;
+  font-weight: 900;
+}
+
+.escudo-demo {
+  font-size: 1.4rem;
+}
+
+.centro-demo {
+  width:           40px;
+  height:          40px;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  font-size:       1.2rem;
+  border-radius:   6px;
+  flex-shrink:     0;
+  background:      conic-gradient(
+    #{$verde}      0deg  90deg,
+    #{$amarillo}  90deg 180deg,
+    #{$rojo}     180deg 270deg,
+    #{$azul}     270deg 360deg
+  );
+}
+
+// ── Puntos de navegación ─────────────────────────────────────────
+.puntos-nav {
+  display:         flex;
+  justify-content: center;
+  gap:             0.5rem;
+  margin:          1.5rem 0 1.2rem;
+}
+
+.punto-nav {
+  width:         8px;
+  height:        8px;
+  border-radius: 50%;
+  background:    rgba(255, 255, 255, 0.2);
+  cursor:        pointer;
+  transition:    all 0.25s ease;
+
+  &.punto-activo {
+    background: $dorado;
+    width:      22px;
+    border-radius: 4px;
+  }
+}
+
+// ── Botones ──────────────────────────────────────────────────────
+.tutorial-botones {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  gap:             0.8rem;
+}
+
+.btn-anterior {
+  --color: rgba(255, 255, 255, 0.6);
+  font-size: 0.85rem;
+  font-weight: 700;
+
+  &[disabled] { opacity: 0.25; }
+}
+
+.btn-siguiente {
+  --background:    linear-gradient(135deg, #{$dorado}, #E0A80E);
+  --color:         #{$fondo-oscuro};
+  --border-radius: 12px;
+  --padding-start: 1.4rem;
+  --padding-end:   1.4rem;
+  font-weight:     800;
+  font-size:       0.88rem;
+}
+
+// ================================================================
+// ANIMACIONES
+// ================================================================
+@keyframes entrarEmoji {
+  from { opacity: 0; transform: scale(0.6) translateY(10px); }
+  to   { opacity: 1; transform: scale(1)   translateY(0);    }
+}
+
+@keyframes entrarDemo {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+@keyframes latirDemo {
+  0%, 100% { transform: scale(1) rotate(0deg);   }
+  50%      { transform: scale(1.08) rotate(6deg); }
+}
+
+@keyframes impactoDemo {
+  0%, 100% { transform: scale(1);    box-shadow: none; }
+  50%      { transform: scale(1.12); box-shadow: 0 0 12px rgba(229, 57, 53, 0.8); }
+}
+
+@keyframes huirDemo {
+  0%, 100% { transform: translateY(0)     scale(1);   opacity: 1;   }
+  50%      { transform: translateY(-10px) scale(0.7); opacity: 0.4; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .paso-emoji, .demo, .dado-demo,
+  .casilla-impacto, .ficha-huyendo {
+    animation: none !important;
+  }
+}

@@ -276,4 +276,7 @@ export class PerfilPage implements OnInit {
   irATienda(): void {
     this.router.navigate(['/tienda']);
   }
+  irATutorial(): void {
+  this.router.navigate(['/tutorial'], { queryParams: { desdeMenu: 'true' } });
+}
 }
